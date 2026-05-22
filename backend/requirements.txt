@@ -1,0 +1,13 @@
+flask
+flask-cors
+flask-jwt-extended
+flask-mail
+flask-compress
+pymongo
+python-dotenv
+bcrypt
+google-genai
+chromadb
+PyPDF2
+xendit-python
+cloudinary

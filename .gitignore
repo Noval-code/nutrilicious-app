@@ -34,3 +34,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# backend / RAG chatbot
+backend/vectorstore/
+backend/__pycache__/
+backend/routes/__pycache__/
+backend/rag/__pycache__/
+.env
