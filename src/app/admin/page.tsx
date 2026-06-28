@@ -2,9 +2,108 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Users, Utensils, Package, Beef, ArrowUpRight, TrendingUp, Receipt, Clock, CheckCircle2, Truck, Loader2 } from 'lucide-react';
+import { Users, Utensils, Package, Beef, ArrowUpRight, TrendingUp, Receipt, Clock, CheckCircle2, Truck, Loader2, Brain, Leaf, Dumbbell, Salad } from 'lucide-react';
 
-const API_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api`;
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
+
+// Package icon/color mapping for prediction widget
+const PKG_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
+  'healthy-food': { icon: Salad, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  'low-carbs':    { icon: Leaf, color: 'text-amber-600', bg: 'bg-amber-50' },
+  'muscle-gain':  { icon: Dumbbell, color: 'text-blue-600', bg: 'bg-blue-50' },
+};
+
+function PredictionWidget() {
+  const [forecast, setForecast] = useState<{ predictions: { package_slug: string; package_name: string; predicted_orders: number }[]; week_label: string } | null>(null);
+  const [metrics, setMetrics] = useState<{ mae: number; rmse: number; r2: number } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('nutrilicious_admin_token');
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    Promise.all([
+      fetch(`${API_URL}/prediction/forecast`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${API_URL}/prediction/accuracy`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([f, m]) => {
+      setForecast(f);
+      setMetrics(m);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 min-h-[260px] flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
+      </div>
+    );
+  }
+
+  if (!forecast || !metrics) {
+    return (
+      <Link href="/admin/prediction" className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 min-h-[260px] flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow group">
+        <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mb-4 group-hover:bg-[#f2f6f4] transition-colors">
+          <Brain className="w-8 h-8" />
+        </div>
+        <h3 className="text-lg font-bold text-slate-700">Prediksi Penjualan</h3>
+        <p className="text-slate-500 max-w-sm mt-2 text-sm leading-relaxed">
+          Model Random Forest belum di-training. Klik untuk mulai.
+        </p>
+        <span className="mt-4 text-sm font-bold text-[#114C2A] bg-[#f2f6f4] px-4 py-2 rounded-lg flex items-center gap-1 group-hover:bg-[#e2eae4] transition-colors">
+          Setup Prediksi <ArrowUpRight className="w-4 h-4" />
+        </span>
+      </Link>
+    );
+  }
+
+  return (
+    <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#f2f6f4] rounded-xl flex items-center justify-center text-[#114C2A]">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-800">Prediksi Minggu Depan</h3>
+            <p className="text-xs font-semibold text-slate-400">{forecast.week_label}</p>
+          </div>
+        </div>
+        <Link href="/admin/prediction" className="text-sm font-bold text-[#114C2A] bg-[#f2f6f4] px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-[#e2eae4] transition-colors">
+          Detail <ArrowUpRight className="w-4 h-4" />
+        </Link>
+      </div>
+
+      {/* Prediction cards */}
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        {forecast.predictions.map((p) => {
+          const cfg = PKG_CONFIG[p.package_slug] || PKG_CONFIG['healthy-food'];
+          const Icon = cfg.icon;
+          return (
+            <div key={p.package_slug} className={`${cfg.bg} rounded-2xl p-4 text-center`}>
+              <Icon className={`w-5 h-5 ${cfg.color} mx-auto mb-1.5`} />
+              <p className="text-2xl font-black text-slate-800">{p.predicted_orders}</p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mt-0.5">{p.package_name}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Metrics row */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
+          MAE: {metrics.mae.toFixed(2)}
+        </span>
+        <span className="text-xs font-bold text-violet-700 bg-violet-50 px-2.5 py-1 rounded-lg">
+          RMSE: {metrics.rmse.toFixed(2)}
+        </span>
+        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg">
+          R²: {(metrics.r2 * 100).toFixed(1)}%
+        </span>
+      </div>
+    </div>
+  );
+}
 
 interface TransactionStats {
   total: number;
@@ -41,16 +140,26 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-const stats = [
-  { name: 'Total Aktif Pelanggan', value: '142', icon: Users, change: '+12%', trend: 'up' },
-  { name: 'Katalog Menu Aktif', value: '25', icon: Utensils, change: '+2', trend: 'up' },
-  { name: 'Jenis Paket Berlangganan', value: '3', icon: Package, change: '0', trend: 'neutral' },
-  { name: 'Macam Bahan Baku', value: '48', icon: Beef, change: '-3%', trend: 'down' },
-];
+interface DashboardStat {
+  name: string;
+  value: string;
+  icon: string;
+  change: string;
+  trend: 'up' | 'down' | 'neutral';
+}
+
+const ICON_MAP: Record<string, React.ElementType> = {
+  Users: Users,
+  Utensils: Utensils,
+  Package: Package,
+  Beef: Beef,
+};
 
 export default function AdminDashboard() {
   const [txnStats, setTxnStats] = useState<TransactionStats | null>(null);
   const [recentTxns, setRecentTxns] = useState<Transaction[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStat[]>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -60,18 +169,27 @@ export default function AdminDashboard() {
         const headers: Record<string, string> = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const [statsRes, txnRes] = await Promise.all([
+        const [statsRes, txnRes, dashRes] = await Promise.all([
           fetch(`${API_URL}/transactions/stats`, { signal: controller.signal, headers }),
           fetch(`${API_URL}/transactions/`, { signal: controller.signal, headers }),
+          fetch(`${API_URL}/dashboard/stats`, { signal: controller.signal, headers }),
         ]);
         if (statsRes.ok) setTxnStats(await statsRes.json());
         if (txnRes.ok) {
           const all = await txnRes.json();
           setRecentTxns(all.slice(0, 5));
         }
+        if (dashRes.ok) {
+          const dashData = await dashRes.json();
+          if (Array.isArray(dashData)) {
+            setDashboardStats(dashData);
+          }
+        }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
         console.error('Failed to fetch transaction data:', err);
+      } finally {
+        setStatsLoading(false);
       }
     }
     fetchData();
@@ -87,43 +205,59 @@ export default function AdminDashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.name} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#114C2A]/5 to-[#F9A826]/10 rounded-bl-full -mr-4 -mt-4 opacity-50 z-0 transition-transform group-hover:scale-110"/>
-              
-              <div className="relative z-10 flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-bold text-slate-500 mb-1">{stat.name}</p>
-                  <h3 className="text-4xl font-black text-slate-800 tracking-tighter">{stat.value}</h3>
+        {statsLoading ? (
+          // Beautiful premium pulse skeleton loader
+          Array.from({ length: 4 }).map((_, idx) => (
+            <div key={idx} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 animate-pulse h-[140px] flex flex-col justify-between">
+              <div className="flex justify-between items-start">
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 bg-slate-100 rounded w-2/3" />
+                  <div className="h-8 bg-slate-200 rounded w-1/3" />
                 </div>
-                <div className="w-12 h-12 bg-[#f2f6f4] rounded-2xl flex items-center justify-center text-[#114C2A]">
-                  <Icon className="w-6 h-6" />
-                </div>
+                <div className="w-12 h-12 bg-slate-100 rounded-2xl" />
               </div>
-              
-              <div className="relative z-10 mt-4 flex items-center text-sm font-semibold">
-                {stat.trend === 'up' && (
-                  <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md flex items-center gap-1">
-                    <TrendingUp className="w-4 h-4" /> {stat.change}
-                  </span>
-                )}
-                {stat.trend === 'down' && (
-                  <span className="text-red-600 bg-red-50 px-2 py-1 rounded-md flex items-center gap-1">
-                    <TrendingUp className="w-4 h-4 rotate-180 transform" /> {stat.change}
-                  </span>
-                )}
-                {stat.trend === 'neutral' && (
-                  <span className="text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
-                    {stat.change}
-                  </span>
-                )}
-                <span className="text-slate-400 ml-2 font-medium">Bulan ini</span>
-              </div>
+              <div className="h-4 bg-slate-100 rounded w-1/2 mt-4" />
             </div>
-          );
-        })}
+          ))
+        ) : (
+          dashboardStats.map((stat) => {
+            const Icon = ICON_MAP[stat.icon] || Users;
+            return (
+              <div key={stat.name} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#114C2A]/5 to-[#F9A826]/10 rounded-bl-full -mr-4 -mt-4 opacity-50 z-0 transition-transform group-hover:scale-110"/>
+                
+                <div className="relative z-10 flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-slate-500 mb-1">{stat.name}</p>
+                    <h3 className="text-4xl font-black text-slate-800 tracking-tighter">{stat.value}</h3>
+                  </div>
+                  <div className="w-12 h-12 bg-[#f2f6f4] rounded-2xl flex items-center justify-center text-[#114C2A]">
+                    <Icon className="w-6 h-6" />
+                  </div>
+                </div>
+                
+                <div className="relative z-10 mt-4 flex items-center text-sm font-semibold">
+                  {stat.trend === 'up' && (
+                    <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md flex items-center gap-1">
+                      <TrendingUp className="w-4 h-4" /> {stat.change}
+                    </span>
+                  )}
+                  {stat.trend === 'down' && (
+                    <span className="text-red-600 bg-red-50 px-2 py-1 rounded-md flex items-center gap-1">
+                      <TrendingUp className="w-4 h-4 rotate-180 transform" /> {stat.change}
+                    </span>
+                  )}
+                  {stat.trend === 'neutral' && (
+                    <span className="text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
+                      {stat.change}
+                    </span>
+                  )}
+                  <span className="text-slate-400 ml-2 font-medium">Bulan ini</span>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* Transaction Revenue + Stats Row */}
@@ -183,15 +317,7 @@ export default function AdminDashboard() {
 
       {/* Bottom Row: Prediction Chart + Recent Transactions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 min-h-[400px] flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mb-4">
-                <TrendingUp className="w-8 h-8" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-700">Grafik Prediksi Pemakaian Bahan</h3>
-            <p className="text-slate-500 max-w-sm mt-2 text-sm leading-relaxed">
-                Visualisasi Random Forest untuk prediksi jumlah bahan baku (gramasi) akan muncul di sini setelah model diintegrasikan.
-            </p>
-        </div>
+        <PredictionWidget />
         
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
            <div className="flex items-center justify-between mb-6">

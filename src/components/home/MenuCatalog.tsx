@@ -1,46 +1,122 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Utensils, Moon, CupSoda, Check, Sparkles, ChefHat } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Leaf, Salad, Dumbbell, Utensils, Moon, Check, Sparkles, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import Image from 'next/image';
 
-const menus = {
-  lunch: [
-    { title: "Mashed Potatoes & Cordon Bleu", items: ["Mashed Potatoes", "Chicken Cordon Bleu", "Bola-Bola Tempe", "Salad Saus Mayonnaise"], icon: <Utensils /> },
-    { title: "Fettucini Carbonara & Beef Patty", items: ["Fettucini Carbonara", "Beef Patty Saus BBQ", "Mixed Vegetables", "Jamur Crispy"], icon: <ChefHat /> },
-    { title: "Spaghetti & Bola-Bola Daging", items: ["Spaghetti Garlic", "Bola-Bola Daging", "Jamur Crispy", "Salad Thousand Island"], icon: <Utensils /> },
-    { title: "Mashed Potatoes & Omelete", items: ["Mashed Potato", "Chicken Bolognese", "Omelete", "Salad Saus Wijen"], icon: <ChefHat /> },
-    { title: "Chicken Steak Saus Mushroom", items: ["Potato Wedges", "Steak Ayam Saus Mushroom", "Mix Vegetables Sautéed", "Jamur Crispy"], icon: <Utensils /> },
-    { title: "Nasi Merah Ikan Cabe Garam", items: ["Nasi Merah", "Ikan Cabe Garam", "Telur Rebus", "Tumis Buncis"], icon: <ChefHat /> },
-    { title: "Nasi Putih Ayam Saus Madu", items: ["Nasi Putih", "Ayam Saus Madu", "Bola-Bola Tahu", "Salad & Saus Wijen Sambal"], icon: <Utensils /> },
-    { title: "Nasi Butter Ikan Saus Lemon", items: ["Nasi Butter", "Ikan Saus Lemon", "Telor Rebus", "Salad Saus Mayonnaise"], icon: <ChefHat /> },
-    { title: "Nasi Putih Ikan Asam Pedas", items: ["Nasi Putih", "Ikan Asam Pedas", "Tahu Jamur", "Salad Saus Wijen"], icon: <Utensils /> },
-    { title: "Nasi Putih Ayam Tim Jahe", items: ["Nasi Putih", "Ayam Tim Jahe", "Jamur Crispy", "Salad & Sause Thousand Island"], icon: <ChefHat /> },
-    { title: "Nasi Putih Ayam Bumbu Pedas", items: ["Nasi Putih", "Ayam Bumbu Pedas", "Tempe Bakar", "Salad Saus Mayonnaise"], icon: <Utensils /> },
-    { title: "Nasi Putih Ikan Pesmol", items: ["Nasi Putih", "Ikan Pesmol", "Tempe Bakar", "Salad Saus Mayonnaise"], icon: <ChefHat /> },
-    { title: "Nasi Putih Ayam Lada Hitam", items: ["Nasi Putih", "Ayam Lada Hitam", "Rolade Tempe", "Salad & Saus Thousand Island"], icon: <Utensils /> },
-    { title: "Nasi Merah Ikan Dabu-Dabu", items: ["Nasi Merah", "Ikan Dabu-Dabu", "Telor Rebus", "Tumis Buncis Wortel"], icon: <ChefHat /> },
-  ],
-  dinner: [
-    { title: "Spring Roll Salad", items: ["Pan-Seared Chicken", "Rice Paper Roll", "Fresh Greens", "Special Sauce"], icon: <Moon /> },
-    { title: "Vegetable Sandwich", items: ["Boiled Eggs", "Whole Wheat Bread", "Fresh Greens", "Healthy Dressing"], icon: <Moon /> },
-    { title: "Omelette & Smoked Beef", items: ["Smoked Beef", "Omelette Sandwich", "Fresh Greens", "Tomato"], icon: <Moon /> },
-    { title: "Triple Decker Sandwich", items: ["Triple Layar Sandwich", "Potato Chips", "Fresh Lettuce", "Meat Slices"], icon: <Moon /> },
-    { title: "Tropical Fruit Salad", items: ["Fresh Seasonal Fruits", "Cheese Grating", "Sweet Dressing"], icon: <Moon /> },
-    { title: "Yogurt Salad", items: ["Fresh Fruits", "Dragon Fruit & Melon", "Healthy Yogurt Dressing", "Cheese Grating"], icon: <Moon /> },
-    { title: "Boiled Vegetables", items: ["Peanut Sauce (Pecel)", "Tofu & Tempeh", "Boiled Greens", "Potato"], icon: <Moon /> },
-    { title: "Pan Seared Chicken Salad", items: ["Pan Seared Chicken Breast", "Potato", "Fresh Greens & Tomato", "Special Dressing"], icon: <Moon /> },
-  ],
-  drinks: [
-    { title: "Jus Jambu", items: ["Homemade 100% Natural", "Tanpa Bahan Pengawet", "Less Sugar", "Filtered Water Blend"], icon: <CupSoda /> },
-    { title: "Infused Water", items: ["Lemon Mint", "Homemade 100% Natural", "Tanpa Bahan Pengawet", "Filtered Water Blend"], icon: <CupSoda /> },
-    { title: "Jus Semangka", items: ["Homemade 100% Natural", "Tanpa Bahan Pengawet", "Less Sugar", "Filtered Water Blend"], icon: <CupSoda /> },
-  ]
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
+
+// Map icon names from database to Lucide components
+const ICON_MAP: Record<string, React.ReactNode> = {
+    Leaf: <Leaf className="w-5 h-5" />,
+    Salad: <Salad className="w-5 h-5" />,
+    Dumbbell: <Dumbbell className="w-5 h-5" />,
 };
 
-type Category = 'lunch' | 'dinner' | 'drinks';
+interface MenuDetail {
+    _id: string;
+    title: string;
+    items: string[];
+    image_url?: string;
+    calories?: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+    sugar?: number;
+}
+
+interface ScheduleDay {
+    day_number: number;
+    day_name: string;
+    lunch_menu_id: string;
+    dinner_menu_id: string;
+    drink_menu_id: string;
+    lunch_menu?: MenuDetail;
+    dinner_menu?: MenuDetail;
+    drink_menu?: MenuDetail;
+}
+
+interface ScheduleData {
+    _id?: string;
+    package_id: string;
+    package_slug?: string;
+    package_name?: string;
+    schedule: ScheduleDay[];
+    is_empty?: boolean;
+}
+
+interface PackageData {
+    _id: string;
+    slug: string;
+    category: string;
+    icon: string;
+    description: string;
+}
 
 export function MenuCatalog() {
-    const [activeTab, setActiveTab] = useState<Category>('lunch');
+    const [packages, setPackages] = useState<PackageData[]>([]);
+    const [schedules, setSchedules] = useState<Record<string, ScheduleData>>({});
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [activePackageIdx, setActivePackageIdx] = useState(0);
+    const [activeDayIdx, setActiveDayIdx] = useState(0);
+
+    const fetchData = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            // 1. Fetch packages
+            const pkgRes = await fetch(`${API_URL}/packages/`);
+            if (!pkgRes.ok) throw new Error('Gagal memuat data paket');
+            const pkgData: PackageData[] = await pkgRes.json();
+            setPackages(pkgData);
+
+            // 2. Fetch schedules for each package (with populated menu details)
+            const scheduleMap: Record<string, ScheduleData> = {};
+            await Promise.all(
+                pkgData.map(async (pkg) => {
+                    try {
+                        const schRes = await fetch(`${API_URL}/schedules/${pkg._id}?populate=true`);
+                        if (schRes.ok) {
+                            scheduleMap[pkg._id] = await schRes.json();
+                        }
+                    } catch {
+                        // Skip if schedule not available
+                    }
+                })
+            );
+            setSchedules(scheduleMap);
+        } catch (err: any) {
+            setError(err.message || 'Terjadi kesalahan saat memuat data');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    // Reset day index when switching packages
+    useEffect(() => {
+        setActiveDayIdx(0);
+    }, [activePackageIdx]);
+
+    const activePackage = packages[activePackageIdx];
+    const activeSchedule = activePackage ? schedules[activePackage._id] : null;
+    const days = activeSchedule?.schedule || [];
+    const activeDay = days[activeDayIdx];
+    const hasSchedule = activeSchedule && !activeSchedule.is_empty && days.length > 0;
+
+    // Collect all menus for the active day
+    const dayMenus: { label: string; icon: React.ReactNode; color: string; menu?: MenuDetail }[] = activeDay ? [
+        { label: 'Lunch', icon: <Utensils className="w-4 h-4" />, color: '#114C2A', menu: activeDay.lunch_menu },
+        { label: 'Dinner', icon: <Moon className="w-4 h-4" />, color: '#5B21B6', menu: activeDay.dinner_menu },
+    ] : [];
+
+    const goToPrevDay = () => setActiveDayIdx(prev => Math.max(0, prev - 1));
+    const goToNextDay = () => setActiveDayIdx(prev => Math.min(days.length - 1, prev + 1));
 
     return (
         <section className="w-full relative py-20 bg-white overflow-hidden" id="menu-catalog">
@@ -50,83 +126,253 @@ export function MenuCatalog() {
             <div className="absolute -right-32 top-96 w-96 h-96 bg-[#114C2A]/5 rounded-full blur-[100px] z-0"></div>
 
             <div className="container relative mx-auto px-4 md:px-6 z-10">
+                {/* Section Header */}
                 <div className="text-center mb-16 max-w-3xl mx-auto">
                     <span className="inline-flex items-center gap-2 bg-[#114C2A]/10 text-[#114C2A] px-4 py-1.5 rounded-full text-sm font-bold tracking-wide mb-4 uppercase">
-                        <Sparkles className="w-4 h-4" /> Variasi Tanpa Batas
+                        <Sparkles className="w-4 h-4" /> Pilihan Menu Kami
                     </span>
                     <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-800 tracking-tight leading-tight">
                         Eksplorasi Rasa <span className="text-[#114C2A]">Setiap Hari</span>
                     </h2>
                     <p className="mt-5 text-slate-500 text-lg">
-                        Beragam pilihan menu lezat yang disiapkan khusus oleh chef dan ahli gizi kami untuk memastikan program diet Anda tidak pernah membosankan.
+                        Lihat jadwal menu harian dari setiap paket berlangganan kami. Disusun oleh chef dan ahli gizi untuk memastikan variasi rasa yang tidak pernah membosankan.
                     </p>
                 </div>
 
-                {/* Categories Tabs */}
-                <div className="flex flex-wrap justify-center gap-3 mb-12">
-                    <button 
-                        onClick={() => setActiveTab('lunch')}
-                        className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-bold transition-all ${activeTab === 'lunch' ? 'bg-[#114C2A] text-white shadow-[0_8px_20px_rgba(17,76,42,0.3)] scale-105' : 'bg-white text-slate-600 border border-gray-100 hover:bg-gray-50'}`}
-                    >
-                        <Utensils className="w-5 h-5" />
-                        LUNCH MENU
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('dinner')}
-                        className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-bold transition-all ${activeTab === 'dinner' ? 'bg-[#114C2A] text-white shadow-[0_8px_20px_rgba(17,76,42,0.3)] scale-105' : 'bg-white text-slate-600 border border-gray-100 hover:bg-gray-50'}`}
-                    >
-                        <Moon className="w-5 h-5" />
-                        DINNER MENU
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('drinks')}
-                        className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-bold transition-all ${activeTab === 'drinks' ? 'bg-[#F9A826] text-[#114C2A] shadow-[0_8px_20px_rgba(249,168,38,0.4)] scale-105' : 'bg-white text-slate-600 border border-gray-100 hover:bg-gray-50'}`}
-                    >
-                        <CupSoda className="w-5 h-5" />
-                        FRESH DRINKS
-                    </button>
-                </div>
+                {/* Error State */}
+                {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center mb-8 max-w-md mx-auto">
+                        <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-3" />
+                        <p className="text-red-600 font-bold mb-1">Gagal memuat menu</p>
+                        <p className="text-red-400 text-sm mb-4">{error}</p>
+                        <button
+                            onClick={fetchData}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-100 text-red-700 rounded-xl font-bold text-sm hover:bg-red-200 transition-colors"
+                        >
+                            <RefreshCw className="w-4 h-4" /> Coba Lagi
+                        </button>
+                    </div>
+                )}
 
-                {/* Grid Content */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {menus[activeTab].map((menu, idx) => (
-                        <div key={idx} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col h-full transform hover:-translate-y-1 relative overflow-hidden">
-                            {/* Card Accent */}
-                            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#114C2A]/5 to-[#F9A826]/10 rounded-bl-full -mr-4 -mt-4 opacity-50 z-0"/>
-                            
-                            {/* Icon Background */}
-                            <div className="w-12 h-12 bg-[#f2f6f4] text-[#114C2A] rounded-2xl flex items-center justify-center mb-5 group-hover:bg-[#F9A826] group-hover:text-white transition-colors z-10 relative">
-                                {menu.icon}
+                {/* Loading State */}
+                {loading && (
+                    <div className="flex flex-col items-center justify-center py-20 gap-4">
+                        <Loader2 className="w-10 h-10 text-[#114C2A] animate-spin" />
+                        <p className="text-slate-500 font-medium">Memuat jadwal menu...</p>
+                    </div>
+                )}
+
+                {/* Main Content */}
+                {!loading && !error && packages.length > 0 && (
+                    <>
+                        {/* Package Tabs */}
+                        <div className="flex flex-wrap justify-center gap-3 mb-10">
+                            {packages.map((pkg, idx) => {
+                                const isActive = idx === activePackageIdx;
+                                const iconEl = ICON_MAP[pkg.icon] || <Leaf className="w-5 h-5" />;
+                                return (
+                                    <button
+                                        key={pkg._id}
+                                        onClick={() => setActivePackageIdx(idx)}
+                                        className={`flex items-center gap-2.5 px-7 py-4 rounded-2xl font-bold transition-all duration-300 ${
+                                            isActive
+                                                ? 'bg-[#114C2A] text-white shadow-[0_8px_20px_rgba(17,76,42,0.3)] scale-105'
+                                                : 'bg-white text-slate-600 border border-gray-100 hover:bg-gray-50 hover:border-gray-200'
+                                        }`}
+                                    >
+                                        <span className={isActive ? 'text-[#F9A826]' : 'text-[#114C2A]'}>{iconEl}</span>
+                                        {pkg.category}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Package Description */}
+                        {activePackage && (
+                            <div className="text-center mb-10">
+                                <p className="text-slate-500 text-base max-w-2xl mx-auto font-medium leading-relaxed">
+                                    {activePackage.description}
+                                </p>
                             </div>
-                            
-                            <h3 className="text-xl font-extrabold text-slate-800 mb-4 leading-snug z-10 relative pr-4">
-                                {menu.title}
-                            </h3>
-                            
-                            <div className="w-8 h-1 bg-[#F9A826] rounded-full mb-5 transition-all group-hover:w-16"></div>
+                        )}
 
-                            <ul className="flex-1 space-y-3 z-10 relative">
-                                {menu.items.map((item, i) => (
-                                    <li key={i} className="flex items-start gap-2 text-slate-600 text-sm">
-                                        <Check className="w-4 h-4 text-[#114C2A] shrink-0 mt-0.5" />
-                                        <span className="leading-tight">{item}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                        {/* Schedule Content */}
+                        {hasSchedule ? (
+                            <div className="max-w-5xl mx-auto">
+                                {/* Day Navigation */}
+                                <div className="flex items-center justify-center gap-3 mb-10">
+                                    <button
+                                        onClick={goToPrevDay}
+                                        disabled={activeDayIdx === 0}
+                                        className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-slate-400 hover:text-[#114C2A] hover:border-[#114C2A]/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                    >
+                                        <ChevronLeft className="w-5 h-5" />
+                                    </button>
 
-                            <div className="mt-6 pt-4 border-t border-gray-50 flex items-center justify-end z-10 relative">
-                                <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 group-hover:bg-[#114C2A] group-hover:text-white transition-colors hover:cursor-pointer">
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7"></path></svg>
+                                    <div className="flex overflow-x-auto gap-2 scrollbar-hide px-2 py-1">
+                                        {days.map((day, idx) => {
+                                            const isActive = idx === activeDayIdx;
+                                            const hasLunch = !!day.lunch_menu;
+                                            const hasDinner = !!day.dinner_menu;
+                                            const hasAnyMenu = hasLunch || hasDinner;
+
+                                            return (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => setActiveDayIdx(idx)}
+                                                    className={`relative flex-shrink-0 flex flex-col items-center px-4 py-3 rounded-2xl font-bold transition-all duration-300 min-w-[80px] ${
+                                                        isActive
+                                                            ? 'bg-[#114C2A] text-white shadow-lg scale-105'
+                                                            : hasAnyMenu
+                                                                ? 'bg-white text-slate-600 border border-gray-100 hover:bg-gray-50'
+                                                                : 'bg-gray-50 text-slate-300 border border-gray-100 cursor-not-allowed'
+                                                    }`}
+                                                >
+                                                    <span className="text-xs font-medium opacity-70">Hari {day.day_number}</span>
+                                                    <span className="text-sm">{day.day_name}</span>
+                                                    {/* Indicator dots */}
+                                                    <div className="flex gap-1 mt-1.5">
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${hasLunch ? (isActive ? 'bg-[#F9A826]' : 'bg-[#114C2A]') : 'bg-gray-200'}`} />
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${hasDinner ? (isActive ? 'bg-purple-300' : 'bg-purple-400') : 'bg-gray-200'}`} />
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <button
+                                        onClick={goToNextDay}
+                                        disabled={activeDayIdx === days.length - 1}
+                                        className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-slate-400 hover:text-[#114C2A] hover:border-[#114C2A]/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                    >
+                                        <ChevronRight className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                {/* Day Header */}
+                                {activeDay && (
+                                    <div className="text-center mb-8">
+                                        <div className="inline-flex items-center gap-2 bg-[#f2f6f4] text-[#114C2A] px-5 py-2 rounded-full text-sm font-bold border border-[#e2eae4]">
+                                            <Calendar className="w-4 h-4" />
+                                            {activeDay.day_name} — Hari ke-{activeDay.day_number}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Menu Cards Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {dayMenus.map((slot, idx) => (
+                                        <div
+                                            key={idx}
+                                            className={`bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group flex flex-col h-full transform hover:-translate-y-1 relative overflow-hidden ${
+                                                !slot.menu ? 'opacity-50' : ''
+                                            }`}
+                                        >
+                                            {/* Card Accent */}
+                                            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#114C2A]/5 to-[#F9A826]/10 rounded-bl-full -mr-4 -mt-4 opacity-50 z-0" />
+
+                                            {/* Category Label */}
+                                            <div className="flex items-center gap-2 mb-4 z-10 relative">
+                                                <div
+                                                    className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
+                                                    style={{ backgroundColor: `${slot.color}15`, color: slot.color }}
+                                                >
+                                                    {slot.icon}
+                                                </div>
+                                                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: slot.color }}>
+                                                    {slot.label}
+                                                </span>
+                                            </div>
+
+                                            {slot.menu ? (
+                                                <>
+                                                    {/* Menu Image */}
+                                                    {slot.menu.image_url && (
+                                                        <div className="relative w-full h-40 rounded-2xl overflow-hidden mb-4 z-10">
+                                                            <Image
+                                                                src={slot.menu.image_url}
+                                                                alt={slot.menu.title}
+                                                                fill
+                                                                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                                                sizes="(max-width: 768px) 100vw, 33vw"
+                                                            />
+                                                        </div>
+                                                    )}
+
+                                                    {/* Menu Title */}
+                                                    <h3 className="text-lg font-extrabold text-slate-800 mb-2 leading-snug z-10 relative pr-4">
+                                                        {slot.menu.title}
+                                                    </h3>
+
+                                                    {/* Nutrition facts */}
+                                                    {(slot.menu.calories !== undefined || slot.menu.protein !== undefined) && (
+                                                        <div className="flex flex-wrap gap-1.5 mb-3 z-10 relative text-[11px] font-bold">
+                                                            {slot.menu.calories ? (
+                                                                <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-lg flex items-center gap-0.5">
+                                                                    🔥 {slot.menu.calories} kcal
+                                                                </span>
+                                                            ) : null}
+                                                            {slot.menu.protein ? (
+                                                                <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg">
+                                                                    Protein: {slot.menu.protein}g
+                                                                </span>
+                                                            ) : null}
+                                                            {slot.menu.carbs ? (
+                                                                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg">
+                                                                    Karbo: {slot.menu.carbs}g
+                                                                </span>
+                                                            ) : null}
+                                                            {slot.menu.fat ? (
+                                                                <span className="bg-pink-50 text-pink-700 px-2 py-0.5 rounded-lg">
+                                                                    Lemak: {slot.menu.fat}g
+                                                                </span>
+                                                            ) : null}
+                                                            {slot.menu.sugar ? (
+                                                                <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-lg">
+                                                                    Gula: {slot.menu.sugar}g
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
+                                                    )}
+
+                                                    <div className="w-8 h-1 bg-[#F9A826] rounded-full mb-4 transition-all group-hover:w-16"></div>
+                                                </>
+                                            ) : (
+                                                <div className="flex-1 flex flex-col items-center justify-center py-8 text-slate-300 z-10 relative">
+                                                    <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center mb-3">
+                                                        {slot.icon}
+                                                    </div>
+                                                    <p className="text-sm font-semibold">Belum ada menu</p>
+                                                    <p className="text-xs mt-1">Menu belum diatur</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
-                
-                {/* CTA or bottom note */}
-                {activeTab !== 'drinks' && (
-                    <div className="mt-12 text-center text-sm font-medium text-slate-500 bg-[#f2f6f4] inline-block px-6 py-3 rounded-full border border-[#e2eae4]">
-                        Menu dapat berubah sewaktu-waktu tergantung ketersediaan bahan segar harian.
+                        ) : (
+                            /* No schedule set */
+                            <div className="text-center py-16 text-slate-400 max-w-md mx-auto">
+                                <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-5">
+                                    <Calendar className="w-10 h-10 text-gray-300" />
+                                </div>
+                                <p className="font-bold text-lg text-slate-500">Jadwal belum tersedia</p>
+                                <p className="text-sm mt-2 leading-relaxed">
+                                    Jadwal menu untuk paket <strong>{activePackage?.category}</strong> belum diatur oleh admin.
+                                </p>
+                            </div>
+                        )}
+
+
+
+                    </>
+                )}
+
+                {/* Empty packages state */}
+                {!loading && !error && packages.length === 0 && (
+                    <div className="text-center py-16 text-slate-400">
+                        <p className="font-bold text-lg">Belum ada paket tersedia</p>
+                        <p className="text-sm mt-1">Paket berlangganan sedang dalam persiapan.</p>
                     </div>
                 )}
             </div>

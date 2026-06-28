@@ -13,6 +13,18 @@ menus_bp = Blueprint('menus', __name__)
 def serialize_menu(menu):
     """Convert MongoDB document to JSON-serializable dict"""
     menu['_id'] = str(menu['_id'])
+    # Pastikan item_details selalu ada (backward-compatible)
+    if 'item_details' not in menu:
+        menu['item_details'] = [
+            {'name': item, 'quantity': '', 'unit': 'gram'}
+            for item in menu.get('items', [])
+        ]
+    # Set default values for nutrition if missing
+    menu['calories'] = menu.get('calories', 0)
+    menu['protein'] = menu.get('protein', 0)
+    menu['carbs'] = menu.get('carbs', 0)
+    menu['fat'] = menu.get('fat', 0)
+    menu['sugar'] = menu.get('sugar', 0)
     return menu
 
 
@@ -55,12 +67,26 @@ def create_menu():
         if field not in data:
             return jsonify({'error': f'Field "{field}" wajib diisi'}), 400
     
+    # Ambil item_details dari request, atau buat dari items
+    item_details = data.get('item_details', [])
+    if not item_details:
+        item_details = [
+            {'name': item, 'quantity': '', 'unit': 'gram'}
+            for item in data['items']
+        ]
+    
     menu = {
         'title': data['title'],
         'category': data['category'],
         'items': data['items'],
+        'item_details': item_details,
         'image_url': data.get('image_url', ''),
         'image_public_id': data.get('image_public_id', ''),
+        'calories': data.get('calories', 0),
+        'protein': data.get('protein', 0),
+        'carbs': data.get('carbs', 0),
+        'fat': data.get('fat', 0),
+        'sugar': data.get('sugar', 0),
     }
     
     result = db['menus'].insert_one(menu)
@@ -76,7 +102,7 @@ def update_menu(menu_id):
     data = request.get_json()
     
     update_data = {}
-    for field in ['title', 'category', 'items', 'image_url', 'image_public_id']:
+    for field in ['title', 'category', 'items', 'item_details', 'image_url', 'image_public_id', 'calories', 'protein', 'carbs', 'fat', 'sugar']:
         if field in data:
             update_data[field] = data[field]
     

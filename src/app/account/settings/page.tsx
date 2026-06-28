@@ -19,15 +19,33 @@ import {
   EyeOff,
   Navigation,
   AlertTriangle,
+  AlertCircle,
+  Check,
+  X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+
+/**
+ * Validasi nomor telepon/WhatsApp Indonesia.
+ * Format yang diterima: 08xx, 628xx, +628xx (10-15 digit angka).
+ */
+function validatePhoneWA(phone: string): string | null {
+  const cleaned = phone.replace(/[\s\-()]/g, "");
+  if (!cleaned) return "Nomor telepon wajib diisi.";
+  if (!/^\d+$/.test(cleaned.replace(/^\+/, ""))) return "Nomor telepon hanya boleh berisi angka.";
+  const normalized = cleaned.replace(/^\+/, "");
+  if (!/^(08|628)/.test(normalized)) return "Nomor harus diawali 08 atau 628 (format Indonesia).";
+  const digitCount = normalized.length;
+  if (digitCount < 10 || digitCount > 15) return "Nomor telepon harus 10–15 digit.";
+  return null;
+}
 
 const LeafletMap = dynamic(
   () => import("@/components/address/LeafletMap"),
   { ssr: false }
 );
 
-const API_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api`;
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ""}/api`;
 
 interface ProfileData {
   name: string;
@@ -71,6 +89,10 @@ export default function SettingsPage() {
   const [addressSuccess, setAddressSuccess] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
+  // Phone validation
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [phoneTouched, setPhoneTouched] = useState(false);
+
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
       router.push("/sign-in");
@@ -102,9 +124,27 @@ export default function SettingsPage() {
     if (isLoaded && isSignedIn) fetchProfile();
   }, [isLoaded, isSignedIn, user]);
 
+  // Handler khusus untuk input telepon
+  const handlePhoneChange = (value: string) => {
+    const filtered = value.replace(/[^\d+\-\s()]/g, "");
+    setProfile({ ...profile, phone: filtered });
+    if (phoneTouched) {
+      setPhoneError(validatePhoneWA(filtered));
+    }
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;
+
+    // Validasi nomor WA sebelum submit
+    const phoneErr = validatePhoneWA(profile.phone);
+    if (phoneErr) {
+      setPhoneError(phoneErr);
+      setPhoneTouched(true);
+      return;
+    }
+
     setProfileSaving(true);
     setProfileSuccess(false);
     try {
@@ -135,6 +175,14 @@ export default function SettingsPage() {
 
     if (newPassword.length < 8) {
       setPwError("Password baru minimal 8 karakter.");
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      setPwError("Password harus mengandung minimal 1 huruf kapital (uppercase).");
+      return;
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':",.\<\>?/\\|`~]/.test(newPassword)) {
+      setPwError("Password harus mengandung minimal 1 simbol (contoh: !@#$%^&*).");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -313,12 +361,28 @@ export default function SettingsPage() {
                     <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                       required
-                      className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-[#114C2A]/30 focus:border-[#114C2A] outline-none transition-all"
+                      type="tel"
+                      inputMode="numeric"
+                      className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 outline-none transition-all ${
+                        phoneError && phoneTouched
+                          ? "border-red-400 focus:ring-red-200 focus:border-red-400"
+                          : "border-slate-200 focus:ring-[#114C2A]/30 focus:border-[#114C2A]"
+                      }`}
                       value={profile.phone}
-                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                      placeholder="0812xxxxxxx"
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      onBlur={() => {
+                        setPhoneTouched(true);
+                        setPhoneError(validatePhoneWA(profile.phone));
+                      }}
+                      placeholder="0812-xxxx-xxxx"
                     />
                   </div>
+                  {phoneError && phoneTouched && (
+                    <p className="mt-1.5 text-xs text-red-500 font-medium flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {phoneError}
+                    </p>
+                  )}
                 </div>
 
                 <div className="pt-2 flex items-center gap-3">
@@ -378,12 +442,29 @@ export default function SettingsPage() {
                     className="w-full border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-[#114C2A]/30 focus:border-[#114C2A] outline-none transition-all"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Minimal 8 karakter"
+                    placeholder="Min. 8 karakter, huruf kapital & simbol"
                   />
                   <button type="button" onClick={() => setShowNewPw(!showNewPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                     {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                {/* Password strength rules */}
+                {newPassword.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {[
+                      { ok: newPassword.length >= 8, label: "Minimal 8 karakter" },
+                      { ok: /[A-Z]/.test(newPassword), label: "Mengandung huruf kapital (A-Z)" },
+                      { ok: /[!@#$%^&*()_+\-=\[\]{};':",.\<\>?/\\|`~]/.test(newPassword), label: "Mengandung simbol (!@#$%^&*)" },
+                    ].map((rule, i) => (
+                      <div key={i} className={`flex items-center gap-1.5 text-xs font-medium ${
+                        rule.ok ? "text-emerald-600" : "text-slate-400"
+                      }`}>
+                        {rule.ok ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
+                        {rule.label}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>

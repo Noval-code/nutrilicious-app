@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { Eye, EyeOff, Leaf, Loader2, AlertTriangle, Mail } from "lucide-react";
+import { Eye, EyeOff, Loader2, AlertTriangle, Mail } from "lucide-react";
+import { GoogleLogin } from "@react-oauth/google";
 
-const API_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api`;
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ""}/api`;
 
 export default function SignInPage() {
   const { login } = useAuth();
@@ -16,6 +17,7 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [needVerify, setNeedVerify] = useState(false);
 
@@ -53,15 +55,60 @@ export default function SignInPage() {
     }
   };
 
+  const handleGoogleSuccess = useCallback(async (credentialResponse: { credential?: string }) => {
+    const idToken = credentialResponse.credential;
+    if (!idToken) {
+      setError("Gagal mendapatkan credential dari Google.");
+      return;
+    }
+
+    setGoogleLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential: idToken }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Gagal masuk dengan Google.");
+        return;
+      }
+
+      login(data.access_token, data.user);
+      router.push("/");
+    } catch (err) {
+      console.error("Google login error:", err);
+      setError("Gagal menghubungi server. Pastikan backend berjalan.");
+    } finally {
+      setGoogleLoading(false);
+    }
+  }, [login, router]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a2e18] via-[#114C2A] to-[#1a663a] flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen relative flex items-center justify-center p-4">
+      {/* Background Image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: 'url(https://res.cloudinary.com/daxxzeeyr/image/upload/v1779725134/Gemini_Generated_Image_t6sx4tt6sx4tt6sx_qyuuzk.png)' }}
+      />
+      {/* Green Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0a2e18]/85 via-[#114C2A]/75 to-[#1a663a]/80" />
+
+      <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 backdrop-blur mb-4 border border-white/20">
-            <Leaf className="w-8 h-8 text-[#F9A826]" />
-          </div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">Nutrilicious</h1>
+          <img
+            src="https://res.cloudinary.com/daxxzeeyr/image/upload/v1779722843/WhatsApp_Image_2026-05-25_at_22.22.11-removebg-preview_1_uerl99.png"
+            alt="Nutrilicious Logo"
+            width={120}
+            height={120}
+            className="w-[120px] h-[120px] object-contain mx-auto mb-4 drop-shadow-lg"
+          />
           <p className="text-white/60 text-sm mt-1">Masuk ke akun Anda</p>
         </div>
 
@@ -144,7 +191,7 @@ export default function SignInPage() {
             <button
               id="signin-submit"
               type="submit"
-              disabled={loading}
+              disabled={loading || googleLoading}
               className="w-full bg-[#114C2A] hover:bg-[#1a663a] text-white font-bold py-3.5 rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
             >
               {loading ? (
@@ -162,12 +209,34 @@ export default function SignInPage() {
             <div className="flex-1 h-px bg-slate-100" />
           </div>
 
-          <p className="text-center text-sm text-slate-500">
-            Belum punya akun?{" "}
-            <Link href="/sign-up" className="font-bold text-[#114C2A] hover:underline">
-              Daftar sekarang
-            </Link>
-          </p>
+          {/* Google Sign In Button */}
+          <div className="flex justify-center">
+            {googleLoading ? (
+              <div className="w-full flex items-center justify-center gap-3 border border-slate-200 rounded-xl py-3.5 font-semibold text-sm text-slate-500">
+                <Loader2 className="w-4 h-4 animate-spin" /> Memproses...
+              </div>
+            ) : (
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setError("Login Google dibatalkan atau gagal.")}
+                theme="outline"
+                size="large"
+                width="100%"
+                text="signin_with"
+                shape="rectangular"
+                logo_alignment="left"
+              />
+            )}
+          </div>
+
+          <div className="mt-6">
+            <p className="text-center text-sm text-slate-500">
+              Belum punya akun?{" "}
+              <Link href="/sign-up" className="font-bold text-[#114C2A] hover:underline">
+                Daftar sekarang
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

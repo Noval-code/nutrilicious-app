@@ -47,7 +47,7 @@ function CheckoutSuccessContent() {
 
     const fetchStatus = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/transactions/check-status/${orderId}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/transactions/check-status/${orderId}`);
         if (res.ok) {
           const data = await res.json();
           setTxn(data);

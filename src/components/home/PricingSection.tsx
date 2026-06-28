@@ -1,122 +1,100 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Leaf, Salad, Dumbbell, CalendarDays, Utensils, UtensilsCrossed, CheckCircle2, ShoppingCart, Check } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Leaf, Salad, Dumbbell, CalendarDays, Utensils, UtensilsCrossed, CheckCircle2, ShoppingCart, Check, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useCart } from '@/components/cart/CartProvider';
+
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 
 const daysList = ["5 Hari", "6 Hari", "10 Hari", "30 Hari"];
 const mealTypesList = ["Lunch", "Dinner", "Lunch & Dinner"];
 
-const packages = [
-  {
-    id: "low-carbs",
-    category: "Low Carbs",
-    icon: <Leaf className="w-8 h-8 md:w-10 md:h-10 text-inherit" />,
-    description: "Diet rendah karbohidrat yang kaya akan serat. Pilihan cerdas untuk program weight loss intensif dan sehat.",
-    pricing: {
-      "5 Hari": {
-        "Lunch": { normal: "180.000", promo: "150.000" },
-        "Dinner": { normal: "180.000", promo: "150.000" },
-        "Lunch & Dinner": { normal: "350.000", promo: "290.000" }
-      },
-      "6 Hari": {
-        "Lunch": { normal: "210.000", promo: "175.000" },
-        "Dinner": { normal: "210.000", promo: "175.000" },
-        "Lunch & Dinner": { normal: "420.000", promo: "345.000" }
-      },
-      "10 Hari": {
-        "Lunch": { normal: "350.000", promo: "290.000" },
-        "Dinner": { normal: "350.000", promo: "290.000" },
-        "Lunch & Dinner": { normal: "700.000", promo: "570.000" }
-      },
-      "30 Hari": {
-        "Lunch": { normal: "1.050.000", promo: "860.000" },
-        "Dinner": { normal: "1.050.000", promo: "860.000" },
-        "Lunch & Dinner": { normal: "2.100.000", promo: "1.700.000" }
-      }
-    }
-  },
-  {
-    id: "healthy-food",
-    category: "Healthy Food",
-    icon: <Salad className="w-8 h-8 md:w-10 md:h-10 text-inherit" />,
-    description: "Pola makan seimbang dengan bahan berkualitas dan bernutrisi tinggi. Semakin mudah untuk menjaga pola hidup sehat.",
-    pricing: {
-      "5 Hari": {
-        "Lunch": { normal: "180.000", promo: "150.000" },
-        "Dinner": { normal: "180.000", promo: "150.000" },
-        "Lunch & Dinner": { normal: "350.000", promo: "290.000" }
-      },
-      "6 Hari": {
-        "Lunch": { normal: "210.000", promo: "175.000" },
-        "Dinner": { normal: "210.000", promo: "175.000" },
-        "Lunch & Dinner": { normal: "420.000", promo: "345.000" }
-      },
-      "10 Hari": {
-        "Lunch": { normal: "350.000", promo: "290.000" },
-        "Dinner": { normal: "350.000", promo: "290.000" },
-        "Lunch & Dinner": { normal: "700.000", promo: "570.000" }
-      },
-      "30 Hari": {
-        "Lunch": { normal: "1.050.000", promo: "860.000" },
-        "Dinner": { normal: "1.050.000", promo: "860.000" },
-        "Lunch & Dinner": { normal: "2.100.000", promo: "1.700.000" }
-      }
-    }
-  },
-  {
-    id: "muscle-gain",
-    category: "Muscle Gain",
-    icon: <Dumbbell className="w-8 h-8 md:w-10 md:h-10 text-inherit" />,
-    description: "Tinggi protein dan kalori optimal untuk mendukung hipertrofi otot dan recovery setelah latihan beban.",
-    pricing: {
-      "5 Hari": {
-        "Lunch": { normal: "270.000", promo: "225.000" },
-        "Dinner": { normal: "270.000", promo: "225.000" },
-        "Lunch & Dinner": { normal: "520.000", promo: "440.000" }
-      },
-      "6 Hari": {
-        "Lunch": { normal: "320.000", promo: "265.000" },
-        "Dinner": { normal: "320.000", promo: "265.000" },
-        "Lunch & Dinner": { normal: "610.000", promo: "520.000" }
-      },
-      "10 Hari": {
-        "Lunch": { normal: "530.000", promo: "440.000" },
-        "Dinner": { normal: "530.000", promo: "440.000" },
-        "Lunch & Dinner": { normal: "1.050.000", promo: "865.000" }
-      },
-      "30 Hari": {
-        "Lunch": { normal: "1.600.000", promo: "1.310.000" },
-        "Dinner": { normal: "1.600.000", promo: "1.310.000" },
-        "Lunch & Dinner": { normal: "3.200.000", promo: "2.590.000" }
-      }
-    }
-  }
-];
+// Map icon name strings from backend to Lucide components
+const ICON_MAP: Record<string, React.ReactNode> = {
+    Leaf: <Leaf className="w-8 h-8 md:w-10 md:h-10 text-inherit" />,
+    Salad: <Salad className="w-8 h-8 md:w-10 md:h-10 text-inherit" />,
+    Dumbbell: <Dumbbell className="w-8 h-8 md:w-10 md:h-10 text-inherit" />,
+};
+
+interface PackageData {
+    _id: string;
+    slug: string;
+    category: string;
+    icon: string;
+    description: string;
+    subscribers?: number;
+    pricing: Record<string, Record<string, { normal: string; promo: string }>>;
+}
 
 export function PricingSection() {
+    const [packages, setPackages] = useState<PackageData[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [selectedDay, setSelectedDay] = useState("5 Hari");
     const [selectedMeal, setSelectedMeal] = useState("Lunch");
     const [addedItems, setAddedItems] = useState<Record<string, boolean>>({});
     const { addItem } = useCart();
 
-    const handleAddToCart = (pkg: typeof packages[0]) => {
-        const pricing = (pkg.pricing as any)[selectedDay][selectedMeal];
+    const fetchPackages = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const res = await fetch(`${API_URL}/packages/`);
+            if (!res.ok) throw new Error('Gagal memuat data paket');
+            const data: PackageData[] = await res.json();
+            setPackages(data);
+        } catch (err: any) {
+            setError(err.message || 'Terjadi kesalahan saat memuat data');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchPackages();
+    }, [fetchPackages]);
+
+    const handleAddToCart = (pkg: PackageData) => {
+        const pricing = pkg.pricing?.[selectedDay]?.[selectedMeal];
+        if (!pricing) return;
+
         addItem({
             package_name: pkg.category,
-            package_slug: pkg.id,
+            package_slug: pkg.slug,
             duration: selectedDay,
             meal_type: selectedMeal,
             price: pricing.promo,
         });
 
         // Show "added" animation
-        const key = `${pkg.id}-${selectedDay}-${selectedMeal}`;
+        const key = `${pkg.slug}-${selectedDay}-${selectedMeal}`;
         setAddedItems(prev => ({ ...prev, [key]: true }));
         setTimeout(() => {
             setAddedItems(prev => ({ ...prev, [key]: false }));
         }, 1500);
     };
+
+    // Loading skeleton for package cards
+    const SkeletonCard = () => (
+        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col animate-pulse">
+            <div className="flex items-start gap-4 mb-5">
+                <div className="w-16 h-16 rounded-2xl bg-gray-200" />
+                <div className="pt-2 flex-1">
+                    <div className="h-6 bg-gray-200 rounded-lg w-3/4" />
+                </div>
+            </div>
+            <div className="space-y-2 mb-6">
+                <div className="h-3 bg-gray-100 rounded w-full" />
+                <div className="h-3 bg-gray-100 rounded w-5/6" />
+            </div>
+            <div className="bg-gray-50 rounded-2xl p-5 mb-6">
+                <div className="h-3 bg-gray-200 rounded w-1/3 mb-2" />
+                <div className="h-10 bg-gray-200 rounded w-2/3" />
+                <div className="h-3 bg-gray-100 rounded w-1/2 mt-3" />
+            </div>
+            <div className="h-12 bg-gray-200 rounded-xl" />
+        </div>
+    );
 
     return (
         <section id="pricing" className="w-full relative py-16 md:py-24 font-sans bg-slate-50 border-t border-gray-100">
@@ -188,80 +166,109 @@ export function PricingSection() {
                             </div>
                         </div>
 
+                        {/* Error State */}
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center mb-6">
+                                <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-3" />
+                                <p className="text-red-600 font-bold mb-1">Gagal memuat paket</p>
+                                <p className="text-red-400 text-sm mb-4">{error}</p>
+                                <button
+                                    onClick={fetchPackages}
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-100 text-red-700 rounded-xl font-bold text-sm hover:bg-red-200 transition-colors"
+                                >
+                                    <RefreshCw className="w-4 h-4" /> Coba Lagi
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Loading State */}
+                        {loading && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                <SkeletonCard />
+                                <SkeletonCard />
+                                <SkeletonCard />
+                            </div>
+                        )}
+
                         {/* Cards Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {packages.map((pkg) => {
-                                const pricing = (pkg.pricing as any)[selectedDay][selectedMeal];
-                                const itemKey = `${pkg.id}-${selectedDay}-${selectedMeal}`;
-                                const justAdded = addedItems[itemKey];
+                        {!loading && !error && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                {packages.map((pkg) => {
+                                    const pricing = pkg.pricing?.[selectedDay]?.[selectedMeal];
+                                    const itemKey = `${pkg.slug}-${selectedDay}-${selectedMeal}`;
+                                    const justAdded = addedItems[itemKey];
+                                    const iconElement = ICON_MAP[pkg.icon] || <Leaf className="w-8 h-8 md:w-10 md:h-10 text-inherit" />;
 
-                                return (
-                                    <div key={pkg.id} className="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl border border-gray-100 flex flex-col relative group transition-all duration-300">
-                                        
-                                        {(pricing as any).freeDays && (
-                                            <div className="absolute -top-3 -right-3 z-10 transition-transform group-hover:scale-110">
-                                                <span className="bg-[#114C2A] text-[#F9A826] font-extrabold text-[10px] md:text-xs uppercase tracking-widest py-1.5 px-4 rounded-full shadow-lg border-2 border-white flex items-center gap-1">
-                                                    ✨ {(pricing as any).freeDays}
-                                                </span>
-                                            </div>
-                                        )}
+                                    // Skip rendering if no pricing for this combination
+                                    if (!pricing) return null;
 
-                                        <div className="flex items-start gap-4 mb-5">
-                                            <div className="w-16 h-16 rounded-2xl bg-[#f2f6f4] text-[#114C2A] flex items-center justify-center group-hover:bg-[#114C2A] group-hover:text-white transition-all duration-500 shadow-sm border border-[#e2eae4]">
-                                                {pkg.icon}
-                                            </div>
-                                            <div className="pt-2">
-                                                <h3 className="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight">{pkg.category}</h3>
-                                            </div>
-                                        </div>
-                                        
-                                        <p className="text-sm text-slate-500 mb-6 flex-grow leading-relaxed font-medium">
-                                            {pkg.description}
-                                        </p>
+                                    return (
+                                        <div key={pkg._id} className="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl border border-gray-100 flex flex-col relative group transition-all duration-300">
 
-                                        <div className="bg-[#fcfdfc] rounded-2xl p-5 mb-6 border border-gray-100 group-hover:border-[#d4e1d8] transition-colors relative overflow-hidden">
-                                            {/* Decorative element background */}
-                                            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#114C2A]/5 to-[#F9A826]/10 rounded-bl-full -mr-4 -mt-4 opacity-50 z-0"/>
+                                            <div className="flex items-start gap-4 mb-5">
+                                                <div className="w-16 h-16 rounded-2xl bg-[#f2f6f4] text-[#114C2A] flex items-center justify-center group-hover:bg-[#114C2A] group-hover:text-white transition-all duration-500 shadow-sm border border-[#e2eae4]">
+                                                    {iconElement}
+                                                </div>
+                                                <div className="pt-2">
+                                                    <h3 className="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight">{pkg.category}</h3>
+                                                </div>
+                                            </div>
                                             
-                                            <div className="relative z-10">
-                                                <div className="text-xs text-slate-400 font-semibold line-through mb-1">
-                                                    Rp{pricing.normal}
-                                                </div>
-                                                <div className="flex items-baseline gap-1">
-                                                    <span className="text-sm md:text-base font-bold text-[#114C2A]">Rp</span>
-                                                    <span className="text-3xl md:text-4xl font-black text-[#114C2A] tracking-tighter">{pricing.promo}</span>
-                                                </div>
-                                                <div className="text-xs md:text-sm text-slate-500 mt-2 font-medium flex items-center gap-1">
-                                                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F9A826]"></span>
-                                                    Untuk {selectedDay} ({selectedMeal})
+                                            <p className="text-sm text-slate-500 mb-6 flex-grow leading-relaxed font-medium">
+                                                {pkg.description}
+                                            </p>
+
+                                            <div className="bg-[#fcfdfc] rounded-2xl p-5 mb-6 border border-gray-100 group-hover:border-[#d4e1d8] transition-colors relative overflow-hidden">
+                                                {/* Decorative element background */}
+                                                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#114C2A]/5 to-[#F9A826]/10 rounded-bl-full -mr-4 -mt-4 opacity-50 z-0"/>
+                                                
+                                                <div className="relative z-10">
+                                                    <div className="text-xs text-slate-400 font-semibold line-through mb-1">
+                                                        Rp{pricing.normal}
+                                                    </div>
+                                                    <div className="flex items-baseline gap-1">
+                                                        <span className="text-sm md:text-base font-bold text-[#114C2A]">Rp</span>
+                                                        <span className="text-3xl md:text-4xl font-black text-[#114C2A] tracking-tighter">{pricing.promo}</span>
+                                                    </div>
+                                                    <div className="text-xs md:text-sm text-slate-500 mt-2 font-medium flex items-center gap-1">
+                                                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F9A826]"></span>
+                                                        Untuk {selectedDay} ({selectedMeal})
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        <button 
-                                            onClick={() => handleAddToCart(pkg)}
-                                            className={`w-full py-3.5 rounded-xl font-bold shadow-md transition-all duration-300 transform group-hover:-translate-y-1 flex items-center justify-center gap-2
-                                                ${justAdded 
-                                                    ? 'bg-emerald-500 text-white hover:shadow-lg' 
-                                                    : 'bg-slate-900 text-white hover:bg-[#114C2A] hover:shadow-lg'
-                                                }`}
-                                        >
-                                            {justAdded ? (
-                                                <>
-                                                    <Check className="w-5 h-5" />
-                                                    Ditambahkan!
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <ShoppingCart className="w-5 h-5" />
-                                                    Langganan Sekarang
-                                                </>
-                                            )}
-                                        </button>
+                                            <button 
+                                                onClick={() => handleAddToCart(pkg)}
+                                                className={`w-full py-3.5 rounded-xl font-bold shadow-md transition-all duration-300 transform group-hover:-translate-y-1 flex items-center justify-center gap-2
+                                                    ${justAdded 
+                                                        ? 'bg-emerald-500 text-white hover:shadow-lg' 
+                                                        : 'bg-slate-900 text-white hover:bg-[#114C2A] hover:shadow-lg'
+                                                    }`}
+                                            >
+                                                {justAdded ? (
+                                                    <>
+                                                        <Check className="w-5 h-5" />
+                                                        Ditambahkan!
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <ShoppingCart className="w-5 h-5" />
+                                                        Langganan Sekarang
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    )
+                                })}
+
+                                {packages.length === 0 && (
+                                    <div className="col-span-full text-center py-16 text-slate-400">
+                                        <p className="font-bold text-lg">Belum ada paket tersedia</p>
+                                        <p className="text-sm mt-1">Paket langganan sedang dalam persiapan.</p>
                                     </div>
-                                )
-                            })}
-                        </div>
+                                )}
+                            </div>
+                        )}
 
                     </div>
                 </div>

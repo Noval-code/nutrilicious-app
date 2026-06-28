@@ -1,6 +1,8 @@
 import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
 import { HeroSection } from "@/components/home/HeroSection";
 import { PricingSection } from "@/components/home/PricingSection";
+import { AboutSection } from "@/components/home/AboutSection";
 import { MenuCatalog } from "@/components/home/MenuCatalog";
 import dynamic from "next/dynamic";
 
@@ -22,12 +24,9 @@ export default function Home() {
         <HeroSection />
         <MenuCatalog />
         <PricingSection />
+        <AboutSection />
       </main>
-      <footer className="border-t bg-slate-50 py-12 md:py-16">
-        <div className="container mx-auto px-4 md:px-6 text-center text-muted-foreground">
-          <p>© 2026 Nutrilicious Food. Cita Rasa Alam, Presisi Gizi Masa Depan.</p>
-        </div>
-      </footer>
+      <Footer />
       <CartWidget />
       <RAGChatbotWidget />
     </div>

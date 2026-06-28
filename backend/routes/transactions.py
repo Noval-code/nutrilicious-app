@@ -58,19 +58,58 @@ def generate_order_id(db):
 
 @transactions_bp.route('/', methods=['GET'])
 def get_transactions():
-    """Get semua transaksi, dengan optional filter status"""
+    """Get transaksi dengan pagination, search, dan filter status"""
     db = get_db()
     
     query = {}
+    
+    # Filter status
     status = request.args.get('status')
-    if status:
+    if status and status != 'all':
         query['status'] = status
     
-    # Sort by newest first
+    # Search by order_id, customer_name, or customer_phone
+    search = request.args.get('search', '').strip()
+    if search:
+        query['$or'] = [
+            {'order_id': {'$regex': search, '$options': 'i'}},
+            {'customer_name': {'$regex': search, '$options': 'i'}},
+            {'customer_phone': {'$regex': search, '$options': 'i'}},
+        ]
+    
+    # Sort order
+    sort_order = -1  # default: terbaru dulu
+    if request.args.get('sort') == 'asc':
+        sort_order = 1
+    
+    # Pagination
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except (ValueError, TypeError):
+        page = 1
+    try:
+        limit = min(100, max(1, int(request.args.get('limit', 15))))
+    except (ValueError, TypeError):
+        limit = 15
+    
+    total = db['transactions'].count_documents(query)
+    total_pages = max(1, -(-total // limit))  # ceil division
+    skip = (page - 1) * limit
+    
     transactions = list(
-        db['transactions'].find(query).sort('created_at', -1)
+        db['transactions'].find(query)
+        .sort('created_at', sort_order)
+        .skip(skip)
+        .limit(limit)
     )
-    return jsonify([serialize_transaction(t) for t in transactions])
+    
+    return jsonify({
+        'data': [serialize_transaction(t) for t in transactions],
+        'total': total,
+        'page': page,
+        'limit': limit,
+        'total_pages': total_pages,
+    })
 
 
 @transactions_bp.route('/<transaction_id>', methods=['GET'])
@@ -162,7 +201,7 @@ def create_transaction():
             ))
         
         # Frontend URL untuk redirect setelah bayar
-        frontend_url = current_app.config.get('CORS_ORIGINS', ['http://localhost:3000'])[0]
+        frontend_url = current_app.config.get('FRONTEND_URL', 'http://localhost:3000')
         
         invoice_request = CreateInvoiceRequest(
             external_id=order_id,
@@ -422,4 +461,127 @@ def get_transaction_stats():
         'delivered': delivered,
         'cancelled': cancelled,
         'total_revenue': total_revenue,
+    })
+
+
+@transactions_bp.route('/report', methods=['GET'])
+def get_sales_report():
+    """Get laporan penjualan dengan filter tanggal, status, dan paket"""
+    db = get_db()
+    
+    query = {}
+    
+    # Filter tanggal
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    
+    date_query = {}
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0)
+            date_query['$gte'] = start_date
+        except ValueError:
+            pass
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            date_query['$lte'] = end_date
+        except ValueError:
+            pass
+            
+    if date_query:
+        query['created_at'] = date_query
+        
+    # Filter status
+    status = request.args.get('status', 'active')
+    if status == 'active':
+        # Default: hanya menghitung pesanan yang sukses/aktif (dikonfirmasi, diproses, terkirim)
+        query['status'] = {'$in': ['confirmed', 'processing', 'delivered']}
+    elif status != 'all':
+        query['status'] = status
+        
+    # Filter paket katering
+    package_slug = request.args.get('package_slug')
+    if package_slug:
+        query['items.package_slug'] = package_slug
+        
+    # Ambil data transaksi yang cocok
+    transactions = list(db['transactions'].find(query).sort('created_at', 1))
+    
+    total_revenue = 0
+    orders_count = len(transactions)
+    total_items_sold = 0
+    
+    # Agregasi statistik paket terlaris
+    package_stats = {}
+    
+    # Agregasi data harian
+    daily_stats = {}
+    
+    for txn in transactions:
+        txn_total = txn.get('total', 0)
+        
+        # Hitung kontribusi item
+        txn_items_sold = 0
+        matching_items_subtotal = 0
+        
+        for item in txn.get('items', []):
+            item_slug = item.get('package_slug', '')
+            item_name = item.get('package_name', '')
+            item_price = item.get('price', 0)
+            item_qty = item.get('quantity', 0)
+            item_subtotal = item.get('subtotal', item_price * item_qty)
+            
+            if package_slug and item_slug != package_slug:
+                continue
+                
+            total_items_sold += item_qty
+            txn_items_sold += item_qty
+            matching_items_subtotal += item_subtotal
+            
+            # Statistik paket
+            if item_slug not in package_stats:
+                package_stats[item_slug] = {
+                    'package_slug': item_slug,
+                    'package_name': item_name,
+                    'quantity': 0,
+                    'revenue': 0
+                }
+            package_stats[item_slug]['quantity'] += item_qty
+            package_stats[item_slug]['revenue'] += item_subtotal
+            
+        # Tentukan nilai pendapatan untuk transaksi ini
+        # Jika difilter per paket, kontribusi pendapatannya hanya subtotal paket tersebut
+        revenue_contribution = matching_items_subtotal if package_slug else txn_total
+        total_revenue += revenue_contribution
+        
+        # Kelompokkan per tanggal
+        created_at = txn.get('created_at')
+        if isinstance(created_at, datetime):
+            date_key = created_at.strftime('%Y-%m-%d')
+        else:
+            date_key = str(created_at)[:10]
+            
+        if date_key not in daily_stats:
+            daily_stats[date_key] = {
+                'date': date_key,
+                'revenue': 0,
+                'count': 0
+            }
+        daily_stats[date_key]['revenue'] += revenue_contribution
+        daily_stats[date_key]['count'] += 1
+        
+    # Urutkan paket terlaris berdasarkan pendapatan tertinggi
+    top_packages = sorted(package_stats.values(), key=lambda x: x['revenue'], reverse=True)
+    
+    # Urutkan tren penjualan harian berdasarkan tanggal naik (kronologis)
+    daily_sales = sorted(daily_stats.values(), key=lambda x: x['date'])
+    
+    return jsonify({
+        'total_revenue': total_revenue,
+        'orders_count': orders_count,
+        'total_items_sold': total_items_sold,
+        'average_order_value': int(total_revenue / orders_count) if orders_count > 0 else 0,
+        'top_packages': top_packages,
+        'daily_sales': daily_sales
     })

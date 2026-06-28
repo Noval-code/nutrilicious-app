@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { Leaf, Loader2, CheckCircle2, AlertTriangle, RefreshCw, Mail } from "lucide-react";
 
-const API_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api`;
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ""}/api`;
 
 function VerifyEmailContent() {
   const { login } = useAuth();

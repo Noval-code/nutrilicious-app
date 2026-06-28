@@ -40,4 +40,9 @@ backend/vectorstore/
 backend/__pycache__/
 backend/routes/__pycache__/
 backend/rag/__pycache__/
+
+# environment files (all levels)
 .env
+.env.local
+!.env.example
+!backend/.env.example

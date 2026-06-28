@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit2, Trash2, Save, X, AlertTriangle, Loader2, AlertCircle } from 'lucide-react';
 
-const API_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api`;
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 
 interface Material {
   _id?: string;

@@ -1,10 +1,25 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { X, MapPin, Navigation, Save, Loader2 } from "lucide-react";
+import { X, MapPin, Navigation, Save, Loader2, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { authFetch } from "@/lib/authFetch";
 import dynamic from "next/dynamic";
+
+/**
+ * Validasi nomor telepon/WhatsApp Indonesia.
+ * Format yang diterima: 08xx, 628xx, +628xx (10-15 digit angka).
+ */
+function validatePhoneWA(phone: string): string | null {
+  const cleaned = phone.replace(/[\s\-()]/g, "");
+  if (!cleaned) return "Nomor telepon wajib diisi.";
+  if (!/^\d+$/.test(cleaned.replace(/^\+/, ""))) return "Nomor telepon hanya boleh berisi angka.";
+  const normalized = cleaned.replace(/^\+/, "");
+  if (!/^(08|628)/.test(normalized)) return "Nomor harus diawali 08 atau 628 (format Indonesia).";
+  const digitCount = normalized.length;
+  if (digitCount < 10 || digitCount > 15) return "Nomor telepon harus 10–15 digit.";
+  return null;
+}
 
 // Leaflet harus dimuat secara dynamic (SSR off) di Next.js
 const LeafletMap = dynamic(() => import("./LeafletMap"), { ssr: false });
@@ -36,6 +51,8 @@ export function AddressModal({ isOpen, onClose, onSaved, initialData }: AddressM
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [phoneTouched, setPhoneTouched] = useState(false);
 
   // Populate from initialData when modal opens
   useEffect(() => {
@@ -79,6 +96,15 @@ export function AddressModal({ isOpen, onClose, onSaved, initialData }: AddressM
     setFormData((prev) => ({ ...prev, lat, lng }));
   }, []);
 
+  // Handler khusus untuk input telepon: hanya izinkan angka, +, -, spasi
+  const handlePhoneChange = (value: string) => {
+    const filtered = value.replace(/[^\d+\-\s()]/g, "");
+    setFormData({ ...formData, phone: filtered });
+    if (phoneTouched) {
+      setPhoneError(validatePhoneWA(filtered));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -87,6 +113,15 @@ export function AddressModal({ isOpen, onClose, onSaved, initialData }: AddressM
       alert("Semua field wajib diisi.");
       return;
     }
+
+    // Validasi nomor WA
+    const phoneErr = validatePhoneWA(formData.phone);
+    if (phoneErr) {
+      setPhoneError(phoneErr);
+      setPhoneTouched(true);
+      return;
+    }
+
     if (formData.lat === null || formData.lng === null) {
       alert("Silakan pilih titik lokasi di peta.");
       return;
@@ -94,7 +129,7 @@ export function AddressModal({ isOpen, onClose, onSaved, initialData }: AddressM
 
     setIsSaving(true);
     try {
-      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/users/me`, {
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/users/me`, {
         method: "POST",
         body: JSON.stringify(formData),
       });
@@ -163,11 +198,27 @@ export function AddressModal({ isOpen, onClose, onSaved, initialData }: AddressM
               <label className="block text-sm font-semibold text-slate-700 mb-1">No. Telepon / WA</label>
               <input
                 required
-                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#114C2A]/30 focus:border-[#114C2A] outline-none transition-all"
-                placeholder="0812xxxxxxx"
+                type="tel"
+                inputMode="numeric"
+                className={`w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 outline-none transition-all ${
+                  phoneError && phoneTouched
+                    ? "border-red-400 focus:ring-red-200 focus:border-red-400"
+                    : "border-slate-200 focus:ring-[#114C2A]/30 focus:border-[#114C2A]"
+                }`}
+                placeholder="0812-xxxx-xxxx"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => handlePhoneChange(e.target.value)}
+                onBlur={() => {
+                  setPhoneTouched(true);
+                  setPhoneError(validatePhoneWA(formData.phone));
+                }}
               />
+              {phoneError && phoneTouched && (
+                <p className="mt-1.5 text-xs text-red-500 font-medium flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  {phoneError}
+                </p>
+              )}
             </div>
 
             {/* Address text */}

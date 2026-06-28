@@ -38,7 +38,7 @@ export default function CheckoutPage() {
     setIsLoading(true);
 
     try {
-      const checkoutRes = await authFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/transactions/`, {
+      const checkoutRes = await authFetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/transactions/`, {
         method: "POST",
         body: JSON.stringify({
           customer_name: userAddress.name,
@@ -165,24 +165,6 @@ export default function CheckoutPage() {
               />
             </div>
 
-            {/* Payment Info */}
-            <div className="bg-gradient-to-r from-[#114C2A]/5 to-[#1a663a]/5 rounded-2xl border border-[#114C2A]/10 p-5">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-[#114C2A]/10 rounded-xl flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-[#114C2A]" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-slate-800">Pembayaran via Xendit</h3>
-                  <p className="text-xs text-slate-500">Transfer Bank, E-Wallet, QRIS, dan lainnya</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2 bg-white/60 rounded-xl px-4 py-3">
-                <Shield className="w-4 h-4 text-[#114C2A] mt-0.5 shrink-0" />
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Setelah menekan tombol bayar, Anda akan diarahkan ke halaman pembayaran Xendit yang aman untuk menyelesaikan transaksi.
-                </p>
-              </div>
-            </div>
 
             {/* Total & Submit */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">

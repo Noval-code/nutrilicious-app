@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { Plus, Edit2, Trash2, X, Save, CalendarDays, DollarSign, Loader2, Leaf, Salad, Dumbbell, AlertCircle } from 'lucide-react';
 
-const API_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api`;
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 
 const ICON_OPTIONS = [
   { value: 'Leaf', label: 'Leaf', icon: <Leaf className="w-6 h-6" /> },
@@ -13,6 +14,8 @@ const ICON_OPTIONS = [
 
 const DURATIONS = ["5 Hari", "6 Hari", "10 Hari", "30 Hari"];
 const MEAL_TYPES = ["Lunch", "Dinner", "Lunch & Dinner"];
+
+
 
 interface PackageData {
   _id?: string;
@@ -46,7 +49,7 @@ const emptyForm = (): PackageData => ({
 export default function PackagesPage() {
   const [packages, setPackages] = useState<PackageData[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'info' | 'pricing' | 'schedule'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'pricing'>('info');
   const [formData, setFormData] = useState<PackageData>(emptyForm());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,14 +57,14 @@ export default function PackagesPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Fetch packages from API
+
+
+  // Fetch packages and menus from API
   const fetchPackages = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch(`${API_URL}/packages/`);
-      if (!res.ok) throw new Error('Gagal memuat data paket');
-      const data = await res.json();
-      setPackages(data);
+      if (res.ok) setPackages(await res.json());
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -80,6 +83,8 @@ export default function PackagesPage() {
       return () => clearTimeout(timer);
     }
   }, [successMsg]);
+
+
 
   // Open form for creating
   const handleOpenCreate = () => {
@@ -217,7 +222,7 @@ export default function PackagesPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-[#114C2A] tracking-tight">Paket Langganan</h1>
-          <p className="text-slate-500 mt-1">Kelola jenis paket, harga per durasi, dan jadwal menu mingguan.</p>
+          <p className="text-slate-500 mt-1">Kelola jenis paket dan harga per durasi.</p>
         </div>
         
         <button 
@@ -273,9 +278,9 @@ export default function PackagesPage() {
                   <button onClick={() => handleOpenEdit(pkg)} className="px-3 py-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 rounded-lg flex items-center gap-1 hover:bg-emerald-100">
                     <DollarSign className="w-3 h-3" /> Harga
                   </button>
-                  <button onClick={() => handleOpenEdit(pkg)} className="px-3 py-1.5 text-xs font-bold text-amber-600 bg-amber-50 rounded-lg flex items-center gap-1 hover:bg-amber-100">
+                  <Link href="/admin/menu-schedules" className="px-3 py-1.5 text-xs font-bold text-amber-600 bg-amber-50 rounded-lg flex items-center gap-1 hover:bg-amber-100">
                     <CalendarDays className="w-3 h-3" /> Jadwal
-                  </button>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -306,7 +311,7 @@ export default function PackagesPage() {
               
               {/* Internal Tabs */}
               <div className="flex gap-2 bg-gray-100/50 p-1 rounded-xl w-fit">
-                {(['info', 'pricing', 'schedule'] as const).map((tab) => (
+                {(['info', 'pricing'] as const).map((tab) => (
                   <button 
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -314,7 +319,7 @@ export default function PackagesPage() {
                       ${activeTab === tab ? 'bg-white text-[#114C2A] shadow-sm' : 'text-slate-500 hover:text-slate-700'}
                     `}
                   >
-                    {tab === 'info' ? 'Info Dasar' : tab === 'pricing' ? 'Harga' : 'Jadwal Menu'}
+                    {tab === 'info' ? 'Info Dasar' : 'Harga'}
                   </button>
                 ))}
               </div>
@@ -415,42 +420,7 @@ export default function PackagesPage() {
                 </div>
               )}
 
-              {activeTab === 'schedule' && (
-                <div className="space-y-6">
-                  <div className="bg-[#114C2A]/10 border border-[#114C2A]/20 text-[#114C2A] p-4 rounded-xl text-sm font-medium">
-                    Jadwalkan menu untuk paket ini. Data ini vital untuk akurasi Prediksi Random Forest (Bahan Baku).
-                  </div>
-                  
-                  <div className="flex gap-4 mb-4">
-                    <select className="border border-gray-200 rounded-lg px-3 py-2 font-bold text-sm outline-none focus:ring-2 focus:ring-[#F9A826]">
-                      <option>Minggu 1</option>
-                      <option>Minggu 2</option>
-                      <option>Minggu 3</option>
-                    </select>
-                  </div>
 
-                  <div className="space-y-2">
-                    {['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map(day => (
-                      <div key={day} className="flex items-center gap-4 bg-white border border-gray-200 p-3 rounded-xl">
-                        <div className="w-20 font-bold text-slate-600 text-sm">{day}</div>
-                        <div className="flex-1">
-                          <select className="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F9A826]">
-                            <option value="">-- Pilih Menu Lunch --</option>
-                            <option>Menu A</option>
-                            <option>Menu B</option>
-                          </select>
-                        </div>
-                        <div className="flex-1">
-                          <select className="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F9A826]">
-                            <option value="">-- Pilih Menu Dinner --</option>
-                            <option>Menu C</option>
-                          </select>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="p-6 border-t border-gray-100 bg-white flex justify-end gap-3 z-10 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">

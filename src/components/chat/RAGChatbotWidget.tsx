@@ -49,7 +49,7 @@ function saveHistory(messages: Message[]) {
 /* ─────────────────────────────────────────────
    API call
    ───────────────────────────────────────────── */
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 async function sendChat(message: string, history: Message[]) {
   const res = await fetch(`${API_URL}/api/chat`, {

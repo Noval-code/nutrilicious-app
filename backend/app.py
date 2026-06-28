@@ -10,6 +10,7 @@ Endpoints:
     POST               /api/auth/verify-email      - Verifikasi OTP email
     POST               /api/auth/resend-otp        - Kirim ulang OTP
     POST               /api/auth/login             - Login user
+    POST               /api/auth/google            - Login/Register via Google OAuth
     POST               /api/auth/admin-login       - Login admin
     GET                /api/auth/me                - Data user aktif (JWT)
     POST               /api/auth/change-password   - Ubah password (JWT)
@@ -25,6 +26,12 @@ Endpoints:
     GET                /api/dashboard/featured-menus
     POST               /api/chat                   - Chatbot NutriBot
     POST               /api/chat/reindex
+    POST               /api/prediction/train        - Training model RF
+    GET                /api/prediction/forecast     - Prediksi 1 minggu
+    GET                /api/prediction/accuracy     - Metrik evaluasi
+    GET                /api/prediction/feature-importance
+    GET                /api/prediction/history
+    GET                /api/prediction/test-results
 """
 
 from dotenv import load_dotenv
@@ -58,6 +65,8 @@ from routes.chat import chat_bp
 from routes.transactions import transactions_bp
 from routes.users import users_bp
 from routes.upload import upload_bp
+from routes.schedules import schedules_bp
+from routes.prediction import prediction_bp
 from cloudinary_helper import init_cloudinary
 
 # Inisialisasi Mail instance (agar bisa diimport di auth.py)
@@ -67,6 +76,7 @@ mail = Mail()
 def create_app():
     """Application factory"""
     app = Flask(__name__)
+    app.url_map.strict_slashes = False  # Hindari redirect 308 yang menghilangkan Authorization header
     app.config.from_object(Config)
 
     # JWT configuration
@@ -86,7 +96,12 @@ def create_app():
     init_cloudinary()
 
     # Enable CORS for Next.js frontend
-    CORS(app, origins=Config.CORS_ORIGINS, supports_credentials=True)
+    CORS(
+        app, 
+        origins=Config.CORS_ORIGINS, 
+        supports_credentials=True,
+        allow_headers=["Content-Type", "Authorization"]
+    )
 
     # Init extensions
     JWTManager(app)
@@ -103,6 +118,8 @@ def create_app():
     app.register_blueprint(transactions_bp, url_prefix='/api/transactions')
     app.register_blueprint(users_bp,        url_prefix='/api/users')
     app.register_blueprint(upload_bp,       url_prefix='/api/upload')
+    app.register_blueprint(schedules_bp,    url_prefix='/api/schedules')
+    app.register_blueprint(prediction_bp,   url_prefix='/api/prediction')
 
     # Health check endpoint
     @app.route('/api/health', methods=['GET'])

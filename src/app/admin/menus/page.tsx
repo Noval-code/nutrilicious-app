@@ -2,35 +2,60 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { Plus, Search, Edit2, Trash2, X, Save, Loader2, AlertCircle, Upload, ImageIcon } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, Save, Loader2, AlertCircle, Upload, ImageIcon, Scale, Flame } from 'lucide-react';
 
-const API_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api`;
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
+
+interface ItemDetail {
+  name: string;
+  quantity: string;
+  unit: string;
+}
 
 interface Menu {
   _id?: string;
   title: string;
   category: string;
-  items: string[];
+  items: string[];          // data dari API tetap string[]
+  item_details?: ItemDetail[]; // detail bahan dengan jumlah (hanya frontend)
   image_url?: string;
   image_public_id?: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  sugar?: number;
 }
+
+const UNIT_OPTIONS = [
+  'gram', 'kg', 'ml', 'liter', 'sdm', 'sdt', 'buah', 'lembar', 'siung', 'batang', 'butir', 'potong', 'sachet', 'bungkus', 'botol',
+];
 
 const emptyForm = (): Menu => ({
   title: '',
   category: 'lunch',
   items: [],
+  item_details: [],
   image_url: '',
   image_public_id: '',
+  calories: 0,
+  protein: 0,
+  carbs: 0,
+  fat: 0,
+  sugar: 0,
 });
 
 export default function MenusPage() {
   const [menus, setMenus] = useState<Menu[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [formData, setFormData] = useState<Menu>(emptyForm());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newItem, setNewItem] = useState("");
+  const [newItemQty, setNewItemQty] = useState("");
+  const [newItemUnit, setNewItemUnit] = useState("gram");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,24 +63,44 @@ export default function MenusPage() {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
+  // Debounce search query agar tidak fetch setiap ketikan huruf
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Fetch menus from API
   const fetchMenus = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (searchQuery) params.append('search', searchQuery);
+      if (debouncedSearch) params.append('search', debouncedSearch);
       if (categoryFilter && categoryFilter !== 'all') params.append('category', categoryFilter);
       
       const res = await fetch(`${API_URL}/menus/?${params.toString()}`);
       if (!res.ok) throw new Error('Gagal memuat data menu');
       const data = await res.json();
-      setMenus(data);
+      // Normalize: pastikan items selalu string[] dan item_details selalu ada
+      const normalized = data.map((m: any) => {
+        const itemDetails: ItemDetail[] = m.item_details && m.item_details.length > 0
+          ? m.item_details
+          : (m.items || []).map((item: any) => ({
+              name: typeof item === 'string' ? item : item.name || '',
+              quantity: '',
+              unit: 'gram',
+            }));
+        const items: string[] = itemDetails.map((d: ItemDetail) => d.name);
+        return { ...m, items, item_details: itemDetails };
+      });
+      setMenus(normalized);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, categoryFilter]);
+  }, [debouncedSearch, categoryFilter]);
 
   useEffect(() => {
     fetchMenus();
@@ -140,21 +185,36 @@ export default function MenusPage() {
     setFormData(emptyForm());
     setEditingId(null);
     setNewItem("");
+    setNewItemQty("");
+    setNewItemUnit("gram");
     setError(null);
     setIsFormOpen(true);
   };
 
   // Open form for editing
   const handleOpenEdit = (menu: Menu) => {
+    // Backward-compatible: kalau belum ada item_details, buat dari items string
+    const details: ItemDetail[] = menu.item_details && menu.item_details.length > 0
+      ? [...menu.item_details]
+      : menu.items.map(name => ({ name, quantity: '', unit: 'gram' }));
+    
     setFormData({
       title: menu.title,
       category: menu.category,
       items: [...menu.items],
+      item_details: details,
       image_url: menu.image_url || '',
       image_public_id: menu.image_public_id || '',
+      calories: menu.calories || 0,
+      protein: menu.protein || 0,
+      carbs: menu.carbs || 0,
+      fat: menu.fat || 0,
+      sugar: menu.sugar || 0,
     });
     setEditingId(menu._id || null);
     setNewItem("");
+    setNewItemQty("");
+    setNewItemUnit("gram");
     setError(null);
     setIsFormOpen(true);
   };
@@ -169,13 +229,39 @@ export default function MenusPage() {
   // Add item to composition list
   const handleAddItem = () => {
     if (!newItem.trim()) return;
-    setFormData(prev => ({ ...prev, items: [...prev.items, newItem.trim()] }));
+    const detail: ItemDetail = {
+      name: newItem.trim(),
+      quantity: newItemQty.trim(),
+      unit: newItemUnit,
+    };
+    setFormData(prev => ({
+      ...prev,
+      items: [...prev.items, newItem.trim()],
+      item_details: [...(prev.item_details || []), detail],
+    }));
     setNewItem("");
+    setNewItemQty("");
+    setNewItemUnit("gram");
   };
 
   // Remove item from composition list
   const handleRemoveItem = (index: number) => {
-    setFormData(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }));
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+      item_details: (prev.item_details || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  // Update item detail (quantity or unit) inline
+  const handleUpdateItemDetail = (index: number, field: keyof ItemDetail, value: string) => {
+    setFormData(prev => {
+      const newDetails = [...(prev.item_details || [])];
+      if (newDetails[index]) {
+        newDetails[index] = { ...newDetails[index], [field]: value };
+      }
+      return { ...prev, item_details: newDetails };
+    });
   };
 
   // Save (create or update)
@@ -193,12 +279,24 @@ export default function MenusPage() {
       setSaving(true);
       setError(null);
 
+      // Kirim items + item_details ke API
+      const details = formData.item_details || [];
       const payload = {
         title: formData.title,
         category: formData.category,
-        items: formData.items,
+        items: details.map(d => d.name),
+        item_details: details.map(d => ({
+          name: d.name,
+          quantity: d.quantity,
+          unit: d.unit,
+        })),
         image_url: formData.image_url,
         image_public_id: formData.image_public_id,
+        calories: Number(formData.calories) || 0,
+        protein: Number(formData.protein) || 0,
+        carbs: Number(formData.carbs) || 0,
+        fat: Number(formData.fat) || 0,
+        sugar: Number(formData.sugar) || 0,
       };
 
       let res: Response;
@@ -252,7 +350,7 @@ export default function MenusPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-[#114C2A] tracking-tight">Katalog Menu</h1>
-          <p className="text-slate-500 mt-1">Kelola daftar makanan, minuman, dan komposisinya.</p>
+          <p className="text-slate-500 mt-1">Kelola daftar makanan dan komposisinya.</p>
         </div>
         
         <button 
@@ -303,7 +401,6 @@ export default function MenusPage() {
                 <option value="all">Semua Kategori</option>
                 <option value="lunch">Lunch</option>
                 <option value="dinner">Dinner</option>
-                <option value="drinks">Drinks</option>
               </select>
             </div>
           </div>
@@ -316,7 +413,7 @@ export default function MenusPage() {
                   <th className="p-4 font-bold w-16">Foto</th>
                   <th className="p-4 font-bold">Nama Menu</th>
                   <th className="p-4 font-bold">Kategori</th>
-                  <th className="p-4 font-bold">Bahan / Komposisi (Highlights)</th>
+                  <th className="p-4 font-bold">Bahan / Komposisi</th>
                   <th className="p-4 font-bold text-right">Aksi</th>
                 </tr>
               </thead>
@@ -342,23 +439,44 @@ export default function MenusPage() {
                     </td>
                     <td className="p-4">
                       <p className="font-bold text-slate-800">{menu.title}</p>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[11px] font-semibold">
+                        <span className="inline-flex items-center gap-0.5 bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md">
+                          🔥 {menu.calories || 0} kcal
+                        </span>
+                        <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md">
+                          P: {menu.protein || 0}g
+                        </span>
+                        <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-md">
+                          K: {menu.carbs || 0}g
+                        </span>
+                        <span className="bg-pink-50 text-pink-700 px-1.5 py-0.5 rounded-md">
+                          L: {menu.fat || 0}g
+                        </span>
+                        <span className="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-md">
+                          G: {menu.sugar || 0}g
+                        </span>
+                      </div>
                     </td>
                     <td className="p-4">
                       <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold capitalize
                         ${menu.category === 'lunch' ? 'bg-blue-50 text-blue-600' : 
-                          menu.category === 'dinner' ? 'bg-indigo-50 text-indigo-600' : 
-                          'bg-amber-50 text-amber-600'}
+                          'bg-indigo-50 text-indigo-600'}
                       `}>
                         {menu.category}
                       </span>
                     </td>
                     <td className="p-4">
                       <div className="flex flex-wrap gap-1">
-                          {menu.items.map((item, idx) => (
-                              <span key={idx} className="bg-gray-100 text-slate-600 text-[11px] font-semibold px-2 py-0.5 rounded-md">
-                                  {item}
-                              </span>
-                          ))}
+                          {(menu.item_details || []).map((detail, idx) => {
+                              const label = detail.quantity
+                                ? `${detail.name} (${detail.quantity} ${detail.unit})`
+                                : detail.name;
+                              return (
+                                <span key={idx} className="bg-gray-100 text-slate-600 text-[11px] font-semibold px-2 py-0.5 rounded-md">
+                                    {label}
+                                </span>
+                              );
+                          })}
                       </div>
                     </td>
                     <td className="p-4 text-right">
@@ -506,8 +624,8 @@ export default function MenusPage() {
 
                <div>
                  <label className="block text-sm font-bold text-slate-700 mb-2">Kategori <span className="text-red-400">*</span></label>
-                 <div className="grid grid-cols-3 gap-3">
-                     {['Lunch', 'Dinner', 'Drinks'].map(cat => (
+                  <div className="grid grid-cols-2 gap-3">
+                      {['Lunch', 'Dinner'].map(cat => (
                          <label 
                            key={cat} 
                            className={`flex items-center justify-center p-3 border rounded-xl cursor-pointer transition-all
@@ -531,57 +649,206 @@ export default function MenusPage() {
                  </div>
                </div>
 
-               <div>
-                 <label className="block text-sm font-bold text-slate-700 mb-2">Komposisi / Bahan <span className="text-red-400">*</span></label>
-                 <div className="space-y-3">
-                     <div className="flex gap-2">
-                         <input 
-                           type="text" 
-                           value={newItem}
-                           onChange={(e) => setNewItem(e.target.value)}
-                           onKeyDown={(e) => {
-                             if (e.key === 'Enter') {
-                               e.preventDefault();
-                               handleAddItem();
-                             }
-                           }}
-                           className="flex-1 border border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#F9A826] text-sm font-medium" 
-                           placeholder="Nama Bahan (contoh: Ayam Fillet)" 
-                         />
-                         <button 
-                           type="button"
-                           onClick={handleAddItem}
-                           className="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors"
-                         >
-                           Tambah
-                         </button>
-                     </div>
+                {/* Kandungan Gizi */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-gray-100 space-y-3">
+                  <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                    <Flame className="w-4 h-4 text-amber-500" /> Kandungan Gizi
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">Kalori (kcal)</label>
+                      <input 
+                        type="number" 
+                        min="0"
+                        value={formData.calories || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, calories: Number(e.target.value) || 0 }))}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F9A826] font-medium bg-white" 
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">Protein (g)</label>
+                      <input 
+                        type="number" 
+                        min="0"
+                        value={formData.protein || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, protein: Number(e.target.value) || 0 }))}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F9A826] font-medium bg-white" 
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">Karbohidrat (g)</label>
+                      <input 
+                        type="number" 
+                        min="0"
+                        value={formData.carbs || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, carbs: Number(e.target.value) || 0 }))}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F9A826] font-medium bg-white" 
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">Lemak (g)</label>
+                      <input 
+                        type="number" 
+                        min="0"
+                        value={formData.fat || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, fat: Number(e.target.value) || 0 }))}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F9A826] font-medium bg-white" 
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500 mb-1">Gula (g)</label>
+                      <input 
+                        type="number" 
+                        min="0"
+                        value={formData.sugar || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, sugar: Number(e.target.value) || 0 }))}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F9A826] font-medium bg-white" 
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                </div>
 
-                     {formData.items.length === 0 ? (
-                       <div className="p-4 bg-slate-50 rounded-xl border border-gray-100 flex flex-col items-center justify-center text-sm text-slate-400 border-dashed">
-                           Belum ada bahan ditambahkan.
-                       </div>
-                     ) : (
-                       <div className="flex flex-wrap gap-2">
-                         {formData.items.map((item, idx) => (
-                           <span 
-                             key={idx} 
-                             className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-sm font-semibold pl-3 pr-1.5 py-1.5 rounded-lg border border-emerald-100"
-                           >
-                             {item}
-                             <button 
-                               type="button"
-                               onClick={() => handleRemoveItem(idx)}
-                               className="p-0.5 hover:bg-emerald-200/60 rounded-md transition-colors"
-                             >
-                               <X className="w-3.5 h-3.5" />
-                             </button>
-                           </span>
-                         ))}
-                       </div>
-                     )}
-                 </div>
-               </div>
+               <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">
+                    <span className="flex items-center gap-1.5">
+                      <Scale className="w-4 h-4 text-[#114C2A]" />
+                      Komposisi / Bahan <span className="text-red-400">*</span>
+                    </span>
+                  </label>
+                  <p className="text-xs text-slate-400 mb-3">Tambahkan bahan beserta jumlah yang dibutuhkan untuk membuat menu ini.</p>
+                  
+                  {/* Input Row */}
+                  <div className="flex items-end gap-2 mb-3">
+                    <div className="flex-1">
+                      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Nama Bahan</span>
+                      <input 
+                        type="text" 
+                        value={newItem}
+                        onChange={(e) => setNewItem(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddItem();
+                          }
+                        }}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-[#F9A826] text-sm font-medium bg-white" 
+                        placeholder="contoh: Ayam Fillet" 
+                      />
+                    </div>
+                    <div className="w-20">
+                      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Jumlah</span>
+                      <input 
+                        type="number" 
+                        min="0"
+                        step="any"
+                        value={newItemQty}
+                        onChange={(e) => setNewItemQty(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddItem();
+                          }
+                        }}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-[#F9A826] text-sm font-medium bg-white" 
+                        placeholder="100" 
+                      />
+                    </div>
+                    <div className="w-24">
+                      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Satuan</span>
+                      <select
+                        value={newItemUnit}
+                        onChange={(e) => setNewItemUnit(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-2 py-2 mt-1 text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-[#F9A826]"
+                      >
+                        {UNIT_OPTIONS.map(u => (
+                          <option key={u} value={u}>{u}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={handleAddItem}
+                      className="bg-[#114C2A] text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#1a663a] transition-colors flex items-center gap-1.5 shadow-sm shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Tambah
+                    </button>
+                  </div>
+
+                  {/* Tabel Daftar Bahan */}
+                  {(formData.item_details || []).length === 0 ? (
+                    <div className="p-6 bg-slate-50 rounded-xl border border-dashed border-gray-200 flex flex-col items-center justify-center text-sm text-slate-400">
+                      Belum ada bahan ditambahkan.
+                    </div>
+                  ) : (
+                    <div className="border border-gray-200 rounded-xl overflow-hidden">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-gray-200">
+                            <th className="px-3 py-2 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-10 text-center">No</th>
+                            <th className="px-3 py-2 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Nama Bahan</th>
+                            <th className="px-3 py-2 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-20 text-center">Jumlah</th>
+                            <th className="px-3 py-2 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-24">Satuan</th>
+                            <th className="px-3 py-2 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-10 text-center">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {(formData.item_details || []).map((detail, idx) => (
+                            <tr key={idx} className="hover:bg-emerald-50/50 transition-colors group/row">
+                              <td className="px-3 py-2 text-center">
+                                <span className="w-5 h-5 rounded-full bg-[#114C2A]/10 text-[#114C2A] text-[11px] font-bold inline-flex items-center justify-center">
+                                  {idx + 1}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-sm font-semibold text-slate-700">
+                                {detail.name}
+                              </td>
+                              <td className="px-3 py-1.5 text-center">
+                                <input 
+                                  type="number"
+                                  min="0"
+                                  step="any"
+                                  value={detail.quantity}
+                                  onChange={(e) => handleUpdateItemDetail(idx, 'quantity', e.target.value)}
+                                  className="w-full border border-gray-200 rounded-md px-2 py-1 text-xs font-medium text-center bg-white focus:outline-none focus:ring-2 focus:ring-[#F9A826] hover:border-[#F9A826] transition-colors"
+                                  placeholder="0"
+                                />
+                              </td>
+                              <td className="px-3 py-1.5">
+                                <select
+                                  value={detail.unit}
+                                  onChange={(e) => handleUpdateItemDetail(idx, 'unit', e.target.value)}
+                                  className="w-full border border-gray-200 rounded-md px-1.5 py-1 text-xs font-medium bg-white focus:outline-none focus:ring-2 focus:ring-[#F9A826] hover:border-[#F9A826] transition-colors"
+                                >
+                                  {UNIT_OPTIONS.map(u => (
+                                    <option key={u} value={u}>{u}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <button 
+                                  type="button"
+                                  onClick={() => handleRemoveItem(idx)}
+                                  className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                                  title="Hapus bahan"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <div className="bg-slate-50 border-t border-gray-200 px-3 py-1.5 text-[11px] text-slate-400 font-medium text-right">
+                        Total: {(formData.item_details || []).length} bahan
+                      </div>
+                    </div>
+                  )}
+                </div>
             </div>
 
             <div className="p-6 border-t border-gray-100 bg-white flex justify-end gap-3">

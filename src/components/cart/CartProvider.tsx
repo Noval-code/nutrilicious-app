@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/authFetch';
 import { AddressModal, UserAddress } from '@/components/address/AddressModal';
@@ -49,13 +50,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [hasFetchedProfile, setHasFetchedProfile] = useState(false);
 
   const { user, isLoaded, isSignedIn } = useAuth();
+  const pathname = usePathname();
 
   // Fetch user profile (address) on login
   useEffect(() => {
+    if (pathname?.startsWith('/admin')) {
+      return;
+    }
     async function fetchProfile() {
       if (isLoaded && isSignedIn && user?.id && !hasFetchedProfile) {
         try {
-          const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/users/me`);
+          const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/users/me`);
           if (res.ok) {
             const data = await res.json();
             if (!data.is_new && data.address && data.lat !== null && data.lng !== null) {
@@ -79,22 +84,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     }
     fetchProfile();
-  }, [isLoaded, isSignedIn, user, hasFetchedProfile]);
+  }, [isLoaded, isSignedIn, user, hasFetchedProfile, pathname]);
+
+  const [isHydrated, setIsHydrated] = useState(false);
 
   // Load cart from localStorage on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem('nutrilicious_cart');
       if (saved) {
-        setItems(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setItems(parsed);
+        }
       }
     } catch { /* ignore */ }
+    setIsHydrated(true);
   }, []);
 
-  // Save cart to localStorage on change
+  // Save cart to localStorage on change (only after hydration)
   useEffect(() => {
+    if (!isHydrated) return;
     localStorage.setItem('nutrilicious_cart', JSON.stringify(items));
-  }, [items]);
+  }, [items, isHydrated]);
 
   const doAddItem = useCallback((item: Omit<CartItem, 'id' | 'quantity'>) => {
     const id = generateItemId(item.package_slug, item.duration, item.meal_type);
@@ -183,7 +195,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       {/* Address Modal - rendered globally */}
       <AddressModal
-        isOpen={isAddressModalOpen}
+        isOpen={isAddressModalOpen && !pathname?.startsWith('/admin')}
         onClose={() => {
           setIsAddressModalOpen(false);
           setPendingItem(null);

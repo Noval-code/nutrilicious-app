@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { UserDropdown } from "./UserDropdown";
@@ -12,22 +13,13 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 shadow-sm">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
         <Link href="/" className="flex items-center gap-2">
-          {/* Simple Leaf Icon as Logo Placeholder */}
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary font-bold text-primary-foreground">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5"
-            >
-              <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
-              <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
-            </svg>
-          </div>
+          <Image
+            src="https://res.cloudinary.com/daxxzeeyr/image/upload/v1779722843/WhatsApp_Image_2026-05-25_at_22.22.11-removebg-preview_1_uerl99.png"
+            alt="Nutrilicious Logo"
+            width={36}
+            height={36}
+            className="h-9 w-9 object-contain"
+          />
           <span className="text-xl font-bold tracking-tight text-primary">
             Nutrilicious Food
           </span>
@@ -51,10 +43,10 @@ export function Header() {
               ) : (
                 <>
                   <Link href="/sign-in">
-                    <Button variant="ghost" className="hidden sm:flex">Masuk</Button>
+                    <Button variant="ghost">Masuk</Button>
                   </Link>
                   <Link href="/sign-up">
-                    <Button>Daftar Mulai Sehat</Button>
+                    <Button>Daftar</Button>
                   </Link>
                 </>
               )}

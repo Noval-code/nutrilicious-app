@@ -17,6 +17,17 @@ const nextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 30, // cache gambar 30 hari
   },
 
+  // Proxy /api requests ke Flask backend (localhost:5000)
+  // Ini memungkinkan 1 domain untuk frontend + backend
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:5000/api/:path*',
+      },
+    ];
+  },
+
   // Caching headers untuk static assets
   async headers() {
     return [

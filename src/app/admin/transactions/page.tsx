@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, Eye, RefreshCw, ChevronDown, X, Clock, CheckCircle2, Truck, XCircle, Loader2, Receipt, ArrowUpDown, CreditCard } from 'lucide-react';
+import { Search, Filter, Eye, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, X, Clock, CheckCircle2, Truck, XCircle, Loader2, Receipt, ArrowUpDown, CreditCard } from 'lucide-react';
 
-const API_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api`;
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 
 interface TransactionItem {
   package_name: string;
@@ -63,26 +63,57 @@ export default function TransactionsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const ITEMS_PER_PAGE = 15;
+
+  // Debounce search agar tidak fetch setiap ketikan huruf
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1); // Reset ke halaman 1 saat search berubah
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset ke halaman 1 saat filter/sort berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, sortOrder]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      const params = new URLSearchParams();
+      params.append('page', String(currentPage));
+      params.append('limit', String(ITEMS_PER_PAGE));
+      if (debouncedSearch) params.append('search', debouncedSearch);
+      if (filterStatus && filterStatus !== 'all') params.append('status', filterStatus);
+      params.append('sort', sortOrder);
+
       const [txnRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/transactions/`),
+        fetch(`${API_URL}/transactions/?${params.toString()}`),
         fetch(`${API_URL}/transactions/stats`),
       ]);
-      if (txnRes.ok) setTransactions(await txnRes.json());
+      if (txnRes.ok) {
+        const result = await txnRes.json();
+        setTransactions(result.data || []);
+        setTotalPages(result.total_pages || 1);
+        setTotalCount(result.total || 0);
+      }
       if (statsRes.ok) setStats(await statsRes.json());
     } catch (err) {
       console.error('Gagal memuat data transaksi:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, debouncedSearch, filterStatus, sortOrder]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -108,19 +139,6 @@ export default function TransactionsPage() {
       setUpdatingStatus(false);
     }
   };
-
-  const filtered = transactions
-    .filter(t => {
-      const q = searchQuery.toLowerCase();
-      const matchSearch = !q || t.order_id.toLowerCase().includes(q) || t.customer_name.toLowerCase().includes(q) || t.customer_phone.includes(q);
-      const matchStatus = filterStatus === 'all' || t.status === filterStatus;
-      return matchSearch && matchStatus;
-    })
-    .sort((a, b) => {
-      const da = new Date(a.created_at).getTime();
-      const db = new Date(b.created_at).getTime();
-      return sortOrder === 'desc' ? db - da : da - db;
-    });
 
   const statusCards = [
     { key: 'pending_payment', count: stats?.pending ?? 0 },
@@ -238,6 +256,7 @@ export default function TransactionsPage() {
             <p className="font-semibold text-sm">Memuat data transaksi...</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -252,7 +271,7 @@ export default function TransactionsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filtered.map((txn) => {
+                {transactions.map((txn) => {
                   const cfg = STATUS_CONFIG[txn.status] || STATUS_CONFIG['pending_payment'];
                   const StatusIcon = cfg.icon;
                   return (
@@ -299,7 +318,7 @@ export default function TransactionsPage() {
                     </tr>
                   );
                 })}
-                {filtered.length === 0 && (
+                {transactions.length === 0 && (
                   <tr>
                     <td colSpan={7} className="p-12 text-center">
                       <Receipt className="w-10 h-10 text-slate-200 mx-auto mb-3" />
@@ -311,6 +330,56 @@ export default function TransactionsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50">
+              <p className="text-xs font-semibold text-slate-400">
+                Menampilkan {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} dari {totalCount} transaksi
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-gray-200 text-slate-500 hover:bg-white hover:text-[#114C2A] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                  .reduce<(number | '...')[]>((acc, p, idx, arr) => {
+                    if (idx > 0 && p - (arr[idx - 1]) > 1) acc.push('...');
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, idx) =>
+                    p === '...' ? (
+                      <span key={`dots-${idx}`} className="px-2 text-slate-300 font-bold text-sm">…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => setCurrentPage(p)}
+                        className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${
+                          currentPage === p
+                            ? 'bg-[#114C2A] text-white shadow-md'
+                            : 'border border-gray-200 text-slate-500 hover:bg-white hover:text-[#114C2A]'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )}
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg border border-gray-200 text-slate-500 hover:bg-white hover:text-[#114C2A] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+          </>
         )}
       </div>
 

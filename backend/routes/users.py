@@ -4,6 +4,7 @@ Menyimpan profil pengguna termasuk alamat + koordinat (lat/lng) dari Leaflet
 Autentikasi menggunakan JWT (flask-jwt-extended)
 """
 
+import re
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from bson import ObjectId
@@ -11,6 +12,30 @@ from db import get_db
 from datetime import datetime, timezone
 
 users_bp = Blueprint('users', __name__)
+
+
+def validate_phone_wa(phone: str) -> str | None:
+    """
+    Validasi nomor telepon/WhatsApp Indonesia.
+    Format yang diterima: 08xx, 628xx, +628xx (10-15 digit angka).
+    Mengembalikan pesan error jika tidak valid, None jika valid.
+    """
+    if not phone or not phone.strip():
+        return None  # Phone kosong diperbolehkan (opsional)
+
+    cleaned = re.sub(r'[\s\-()]', '', phone)
+    digits_only = cleaned.lstrip('+')
+
+    if not digits_only.isdigit():
+        return "Nomor telepon hanya boleh berisi angka."
+
+    if not re.match(r'^(08|628)', digits_only):
+        return "Nomor harus diawali 08 atau 628 (format Indonesia)."
+
+    if len(digits_only) < 10 or len(digits_only) > 15:
+        return "Nomor telepon harus 10-15 digit."
+
+    return None
 
 
 @users_bp.route('/me', methods=['GET'])
@@ -55,6 +80,11 @@ def update_my_profile():
     address = data.get('address', '')
     lat     = data.get('lat', None)
     lng     = data.get('lng', None)
+
+    # Validasi nomor telepon/WA
+    phone_error = validate_phone_wa(phone)
+    if phone_error:
+        return jsonify({'error': phone_error}), 400
 
     now = datetime.now(timezone.utc)
 

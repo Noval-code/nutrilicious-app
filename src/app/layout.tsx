@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/components/cart/CartProvider";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -18,10 +19,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={cn("font-sans", inter.variable)}>
+    <html lang="id" className={cn("font-sans", inter.variable)} suppressHydrationWarning>
       <body className={`${inter.variable} antialiased`}>
         <AuthProvider>
-          <CartProvider>{children}</CartProvider>
+          <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""}>
+            <CartProvider>{children}</CartProvider>
+          </GoogleOAuthProvider>
         </AuthProvider>
       </body>
     </html>

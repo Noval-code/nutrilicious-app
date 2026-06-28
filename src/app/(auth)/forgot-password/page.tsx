@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Leaf,
   Loader2,
   AlertTriangle,
   Mail,
@@ -15,9 +14,11 @@ import {
   ArrowLeft,
   RefreshCw,
   ShieldCheck,
+  Check,
+  X,
 } from "lucide-react";
 
-const API_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api`;
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ""}/api`;
 
 type Step = "email" | "otp" | "success";
 
@@ -71,6 +72,18 @@ export default function ForgotPasswordPage() {
     setError("");
     setInfo("");
 
+    if (newPassword.length < 8) {
+      setError("Password baru minimal 8 karakter.");
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      setError("Password harus mengandung minimal 1 huruf kapital (uppercase).");
+      return;
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':",.\<\>?/\\|`~]/.test(newPassword)) {
+      setError("Password harus mengandung minimal 1 simbol (contoh: !@#$%^&*).");
+      return;
+    }
     if (newPassword !== confirmPassword) {
       setError("Password baru dan konfirmasi tidak cocok.");
       return;
@@ -138,8 +151,14 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 backdrop-blur mb-4 border border-white/20">
-            <Leaf className="w-8 h-8 text-[#F9A826]" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white/10 backdrop-blur mb-4 border border-white/20">
+            <img
+              src="https://res.cloudinary.com/daxxzeeyr/image/upload/v1779722843/WhatsApp_Image_2026-05-25_at_22.22.11-removebg-preview_1_uerl99.png"
+              alt="Nutrilicious Logo"
+              width={56}
+              height={56}
+              className="w-14 h-14 object-contain"
+            />
           </div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight">Nutrilicious</h1>
           <p className="text-white/60 text-sm mt-1">
@@ -279,7 +298,7 @@ export default function ForgotPasswordPage() {
                     minLength={8}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Minimal 8 karakter"
+                    placeholder="Min. 8 karakter, huruf kapital & simbol"
                     className="w-full border border-slate-200 rounded-xl pl-10 pr-10 py-3 text-sm focus:ring-2 focus:ring-[#114C2A]/30 focus:border-[#114C2A] outline-none transition-all"
                   />
                   <button
@@ -290,6 +309,23 @@ export default function ForgotPasswordPage() {
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                {/* Password strength rules */}
+                {newPassword.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {[
+                      { ok: newPassword.length >= 8, label: "Minimal 8 karakter" },
+                      { ok: /[A-Z]/.test(newPassword), label: "Mengandung huruf kapital (A-Z)" },
+                      { ok: /[!@#$%^&*()_+\-=\[\]{};':",.\<\>?/\\|`~]/.test(newPassword), label: "Mengandung simbol (!@#$%^&*)" },
+                    ].map((rule, i) => (
+                      <div key={i} className={`flex items-center gap-1.5 text-xs font-medium ${
+                        rule.ok ? "text-emerald-600" : "text-slate-400"
+                      }`}>
+                        {rule.ok ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
+                        {rule.label}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Confirm Password */}

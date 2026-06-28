@@ -103,11 +103,6 @@ def seed_menus():
         { "title": "Yogurt Salad", "category": "dinner", "items": ["Fresh Fruits", "Dragon Fruit & Melon", "Healthy Yogurt Dressing", "Cheese Grating"] },
         { "title": "Boiled Vegetables", "category": "dinner", "items": ["Peanut Sauce (Pecel)", "Tofu & Tempeh", "Boiled Greens", "Potato"] },
         { "title": "Pan Seared Chicken Salad", "category": "dinner", "items": ["Pan Seared Chicken Breast", "Potato", "Fresh Greens & Tomato", "Special Dressing"] },
-        
-        # === DRINKS ===
-        { "title": "Jus Jambu", "category": "drinks", "items": ["Homemade 100% Natural", "Tanpa Bahan Pengawet", "Less Sugar", "Filtered Water Blend"] },
-        { "title": "Infused Water", "category": "drinks", "items": ["Lemon Mint", "Homemade 100% Natural", "Tanpa Bahan Pengawet", "Filtered Water Blend"] },
-        { "title": "Jus Semangka", "category": "drinks", "items": ["Homemade 100% Natural", "Tanpa Bahan Pengawet", "Less Sugar", "Filtered Water Blend"] },
     ]
     
     result = collection.insert_many(menus)

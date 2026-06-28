@@ -11,3 +11,9 @@ chromadb
 PyPDF2
 xendit-python
 cloudinary
+scikit-learn
+pandas
+numpy
+joblib
+google-auth
+requests
