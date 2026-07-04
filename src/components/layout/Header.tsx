@@ -43,10 +43,10 @@ export function Header() {
               ) : (
                 <>
                   <Link href="/sign-in">
-                    <Button variant="ghost">Masuk</Button>
+                    <Button variant="outline" className="border-primary text-primary hover:bg-primary/10 font-semibold px-5">Masuk</Button>
                   </Link>
                   <Link href="/sign-up">
-                    <Button>Daftar</Button>
+                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-5">Daftar</Button>
                   </Link>
                 </>
               )}

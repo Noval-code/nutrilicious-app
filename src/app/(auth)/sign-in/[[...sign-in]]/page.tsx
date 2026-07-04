@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { Eye, EyeOff, Loader2, AlertTriangle, Mail } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
+import { toast } from "sonner";
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ""}/api`;
 
@@ -38,18 +39,25 @@ export default function SignInPage() {
 
       if (!res.ok) {
         if (data.need_verification) {
+          const message = "Akun belum diverifikasi. Silakan cek email Anda.";
           setNeedVerify(true);
-          setError("Akun belum diverifikasi. Silakan cek email Anda.");
+          setError(message);
+          toast.error(message);
         } else {
-          setError(data.error || "Gagal masuk.");
+          const message = data.error || "Gagal masuk.";
+          setError(message);
+          toast.error(message);
         }
         return;
       }
 
+      toast.success("Berhasil masuk. Selamat datang kembali!");
       login(data.access_token, data.user);
       router.push("/");
     } catch {
-      setError("Terjadi kesalahan. Coba lagi.");
+      const message = "Terjadi kesalahan. Coba lagi.";
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -58,7 +66,9 @@ export default function SignInPage() {
   const handleGoogleSuccess = useCallback(async (credentialResponse: { credential?: string }) => {
     const idToken = credentialResponse.credential;
     if (!idToken) {
-      setError("Gagal mendapatkan credential dari Google.");
+      const message = "Gagal mendapatkan credential dari Google.";
+      setError(message);
+      toast.error(message);
       return;
     }
 
@@ -75,15 +85,20 @@ export default function SignInPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Gagal masuk dengan Google.");
+        const message = data.error || "Gagal masuk dengan Google.";
+        setError(message);
+        toast.error(message);
         return;
       }
 
+      toast.success("Berhasil masuk dengan Google.");
       login(data.access_token, data.user);
       router.push("/");
     } catch (err) {
       console.error("Google login error:", err);
-      setError("Gagal menghubungi server. Pastikan backend berjalan.");
+      const message = "Gagal menghubungi server. Pastikan backend berjalan.";
+      setError(message);
+      toast.error(message);
     } finally {
       setGoogleLoading(false);
     }
@@ -218,7 +233,11 @@ export default function SignInPage() {
             ) : (
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
-                onError={() => setError("Login Google dibatalkan atau gagal.")}
+                onError={() => {
+                  const message = "Login Google dibatalkan atau gagal.";
+                  setError(message);
+                  toast.error(message);
+                }}
                 theme="outline"
                 size="large"
                 width="100%"

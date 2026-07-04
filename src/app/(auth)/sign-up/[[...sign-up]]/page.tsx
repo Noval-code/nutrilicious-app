@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { Eye, EyeOff, Loader2, AlertTriangle, Mail, User, Check, X } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
+import { toast } from "sonner";
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ""}/api`;
 
@@ -27,19 +28,27 @@ export default function SignUpPage() {
     setError("");
 
     if (password.length < 8) {
-      setError("Password minimal 8 karakter.");
+      const message = "Password minimal 8 karakter.";
+      setError(message);
+      toast.error(message);
       return;
     }
     if (!/[A-Z]/.test(password)) {
-      setError("Password harus mengandung minimal 1 huruf kapital (uppercase).");
+      const message = "Password harus mengandung minimal 1 huruf kapital (uppercase).";
+      setError(message);
+      toast.error(message);
       return;
     }
     if (!/[!@#$%^&*()_+\-=\[\]{};':",.\<\>?/\\|`~]/.test(password)) {
-      setError("Password harus mengandung minimal 1 simbol (contoh: !@#$%^&*).");
+      const message = "Password harus mengandung minimal 1 simbol (contoh: !@#$%^&*).";
+      setError(message);
+      toast.error(message);
       return;
     }
     if (password !== confirmPw) {
-      setError("Konfirmasi password tidak cocok.");
+      const message = "Konfirmasi password tidak cocok.";
+      setError(message);
+      toast.error(message);
       return;
     }
 
@@ -54,14 +63,18 @@ export default function SignUpPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Gagal mendaftar.");
+        const message = data.error || "Gagal mendaftar.";
+        setError(message);
+        toast.error(message);
         return;
       }
 
-      // Redirect ke halaman verifikasi OTP
+      toast.success("Pendaftaran berhasil. Silakan verifikasi email Anda.");
       router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch {
-      setError("Terjadi kesalahan. Coba lagi.");
+      const message = "Terjadi kesalahan. Coba lagi.";
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -70,7 +83,9 @@ export default function SignUpPage() {
   const handleGoogleSuccess = useCallback(async (credentialResponse: { credential?: string }) => {
     const idToken = credentialResponse.credential;
     if (!idToken) {
-      setError("Gagal mendapatkan credential dari Google.");
+      const message = "Gagal mendapatkan credential dari Google.";
+      setError(message);
+      toast.error(message);
       return;
     }
 
@@ -87,15 +102,20 @@ export default function SignUpPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Gagal mendaftar dengan Google.");
+        const message = data.error || "Gagal mendaftar dengan Google.";
+        setError(message);
+        toast.error(message);
         return;
       }
 
+      toast.success("Pendaftaran dengan Google berhasil.");
       login(data.access_token, data.user);
       router.push("/");
     } catch (err) {
       console.error("Google signup error:", err);
-      setError("Gagal menghubungi server. Pastikan backend berjalan.");
+      const message = "Gagal menghubungi server. Pastikan backend berjalan.";
+      setError(message);
+      toast.error(message);
     } finally {
       setGoogleLoading(false);
     }
@@ -253,7 +273,11 @@ export default function SignUpPage() {
             ) : (
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
-                onError={() => setError("Pendaftaran Google dibatalkan atau gagal.")}
+                onError={() => {
+                  const message = "Pendaftaran Google dibatalkan atau gagal.";
+                  setError(message);
+                  toast.error(message);
+                }}
                 theme="outline"
                 size="large"
                 width="100%"

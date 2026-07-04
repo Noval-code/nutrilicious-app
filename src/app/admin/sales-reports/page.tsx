@@ -14,8 +14,10 @@ import {
   CheckCircle2, 
   ArrowUpDown,
   ShoppingBag,
-  DollarSign
+  DollarSign,
+  Download
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 
@@ -149,6 +151,75 @@ export default function SalesReportPage() {
     setSelectedPackage('all');
   };
 
+  // ─── Export Excel ──────────────────────────────────────────────────────
+  const handleExportExcel = useCallback(() => {
+    if (!reportData) return;
+
+    const wb = XLSX.utils.book_new();
+
+    // --- Sheet 1: Ringkasan ---
+    const statusLabels: Record<string, string> = {
+      active: 'Aktif (Sukses/Bayar)',
+      all: 'Semua Transaksi',
+      pending_payment: 'Belum Bayar',
+      confirmed: 'Dikonfirmasi',
+      processing: 'Diproses',
+      delivered: 'Terkirim',
+      cancelled: 'Dibatalkan',
+    };
+
+    const summaryData = [
+      ['Laporan Penjualan - Nutrilicious Food'],
+      [],
+      ['Periode', `${formatDate(startDate)} - ${formatDate(endDate)}`],
+      ['Status Filter', statusLabels[status] || status],
+      ['Paket Filter', selectedPackage === 'all' ? 'Semua Paket' : selectedPackage],
+      [],
+      ['Metrik', 'Nilai'],
+      ['Total Pendapatan', reportData.total_revenue],
+      ['Total Transaksi', reportData.orders_count],
+      ['Rata-Rata Transaksi (AOV)', reportData.average_order_value],
+      ['Total Porsi Terjual', reportData.total_items_sold],
+    ];
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+
+    // Set column widths for readability
+    wsSummary['!cols'] = [{ wch: 30 }, { wch: 35 }];
+
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Ringkasan');
+
+    // --- Sheet 2: Penjualan Harian ---
+    const dailyHeader = ['Tanggal', 'Jumlah Transaksi', 'Pendapatan (Rp)'];
+    const dailyRows = [...(reportData.daily_sales || [])]
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .map((d) => [
+        formatDate(d.date),
+        d.count,
+        d.revenue,
+      ]);
+
+    const wsDaily = XLSX.utils.aoa_to_sheet([dailyHeader, ...dailyRows]);
+    wsDaily['!cols'] = [{ wch: 20 }, { wch: 20 }, { wch: 22 }];
+    XLSX.utils.book_append_sheet(wb, wsDaily, 'Penjualan Harian');
+
+    // --- Sheet 3: Paket Terlaris ---
+    const pkgHeader = ['No', 'Nama Paket', 'Jumlah Porsi', 'Pendapatan (Rp)'];
+    const pkgRows = (reportData.top_packages || []).map((pkg, idx) => [
+      idx + 1,
+      pkg.package_name || pkg.package_slug,
+      pkg.quantity,
+      pkg.revenue,
+    ]);
+
+    const wsPkg = XLSX.utils.aoa_to_sheet([pkgHeader, ...pkgRows]);
+    wsPkg['!cols'] = [{ wch: 5 }, { wch: 30 }, { wch: 15 }, { wch: 22 }];
+    XLSX.utils.book_append_sheet(wb, wsPkg, 'Paket Terlaris');
+
+    // --- Generate & download ---
+    const fileName = `Laporan_Penjualan_${startDate}_sd_${endDate}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  }, [reportData, startDate, endDate, status, selectedPackage]);
+
   // SVG Chart Coordinates calculation
   const chartProps = useMemo(() => {
     if (!reportData || !reportData.daily_sales || reportData.daily_sales.length === 0) return null;
@@ -240,14 +311,25 @@ export default function SalesReportPage() {
             Analisis detail keuangan, transaksi, dan grafik tren penjualan.
           </p>
         </div>
-        <button 
-          onClick={fetchReport} 
-          disabled={loading}
-          className="bg-[#114C2A] text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-[#1a663a] transition-all duration-200 shadow-md disabled:opacity-60 cursor-pointer"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> 
-          Refresh Data
-        </button>
+        <div className="flex items-center gap-3">
+          {reportData && !loading && (
+            <button 
+              onClick={handleExportExcel}
+              className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 transition-all duration-200 shadow-md cursor-pointer"
+            >
+              <Download className="w-4 h-4" /> 
+              Export Excel
+            </button>
+          )}
+          <button 
+            onClick={fetchReport} 
+            disabled={loading}
+            className="bg-[#114C2A] text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-[#1a663a] transition-all duration-200 shadow-md disabled:opacity-60 cursor-pointer"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> 
+            Refresh Data
+          </button>
+        </div>
       </div>
 
       {/* Filter Card */}

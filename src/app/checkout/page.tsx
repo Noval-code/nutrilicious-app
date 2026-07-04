@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { MapPin, Edit3, ArrowLeft, CreditCard, Shield, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 
 function formatRupiah(num: number): string {
   return num.toLocaleString('id-ID');
@@ -20,6 +21,7 @@ export default function CheckoutPage() {
 
   const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -60,26 +62,47 @@ export default function CheckoutPage() {
 
       if (checkoutRes.ok) {
         const txnData = await checkoutRes.json();
-        clearCart();
 
         // Jika ada Xendit invoice URL, redirect ke halaman pembayaran Xendit
+        toast.success("Pesanan berhasil dibuat. Mengarahkan ke pembayaran...");
+
         if (txnData.xendit_invoice_url) {
+          // Set redirecting DULU agar UI tidak flash "keranjang kosong"
+          setIsRedirecting(true);
+          clearCart();
           window.location.href = txnData.xendit_invoice_url;
         } else {
+          clearCart();
+          toast.success("Pesanan berhasil dibuat.");
           // Fallback jika Xendit belum dikonfigurasi
           router.push(`/checkout/success?order_id=${txnData.order_id}`);
         }
       } else {
         const errData = await checkoutRes.json();
-        alert(errData.error || "Gagal membuat pesanan.");
+        toast.error(errData.error || "Gagal membuat pesanan.");
       }
     } catch (error) {
       console.error(error);
-      alert("Terjadi kesalahan saat memproses pesanan.");
+      toast.error("Terjadi kesalahan saat memproses pesanan.");
     } finally {
-      setIsLoading(false);
+      if (!isRedirecting) {
+        setIsLoading(false);
+      }
     }
   };
+
+  // Tampilkan layar loading saat sedang redirect ke Xendit
+  if (isRedirecting) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-10 h-10 animate-spin text-[#114C2A] mx-auto" />
+          <p className="text-lg font-semibold text-[#114C2A]">Mengarahkan ke halaman pembayaran...</p>
+          <p className="text-sm text-slate-500">Mohon tunggu sebentar</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">

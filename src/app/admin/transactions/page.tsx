@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, Eye, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, X, Clock, CheckCircle2, Truck, XCircle, Loader2, Receipt, ArrowUpDown, CreditCard } from 'lucide-react';
+import { Search, Filter, Eye, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, X, Clock, CheckCircle2, Truck, XCircle, Loader2, Receipt, ArrowUpDown, CreditCard, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 
@@ -140,6 +141,48 @@ export default function TransactionsPage() {
     }
   };
 
+  const handleExportExcel = () => {
+    if (transactions.length === 0) return;
+
+    const dataToExport = transactions.map(txn => {
+      const statusLabel = STATUS_CONFIG[txn.status]?.label || txn.status;
+      const itemsString = txn.items.map(item => `${item.package_name} (${item.duration} - ${item.meal_type}) x${item.quantity}`).join('; ');
+
+      return {
+        'Order ID': txn.order_id,
+        'Tanggal': formatDate(txn.created_at),
+        'Nama Pelanggan': txn.customer_name,
+        'Nomor Telepon': txn.customer_phone,
+        'Alamat Pengiriman': txn.customer_address || '-',
+        'Catatan': txn.customer_notes || '-',
+        'Item Pesanan': itemsString,
+        'Total Pembayaran': txn.total,
+        'Status Pesanan': statusLabel,
+        'Metode Pembayaran': txn.payment_method || '-',
+        'Status Pembayaran': txn.payment_status || '-'
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Transaksi');
+
+    // Auto-fit columns
+    const maxLens = Object.keys(dataToExport[0]).map(key => {
+      let maxLen = key.length;
+      dataToExport.forEach(row => {
+        const val = row[key as keyof typeof row];
+        if (val) {
+          maxLen = Math.max(maxLen, val.toString().length);
+        }
+      });
+      return { wch: maxLen + 3 };
+    });
+    worksheet['!cols'] = maxLens;
+
+    XLSX.writeFile(workbook, `Data_Pengantaran_Transaksi_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   const statusCards = [
     { key: 'pending_payment', count: stats?.pending ?? 0 },
     { key: 'confirmed', count: stats?.confirmed ?? 0 },
@@ -156,9 +199,18 @@ export default function TransactionsPage() {
           <h1 className="text-3xl font-extrabold text-[#114C2A] tracking-tight">Riwayat Transaksi</h1>
           <p className="text-slate-500 mt-1">Pantau dan kelola seluruh pesanan pelanggan.</p>
         </div>
-        <button onClick={fetchData} className="bg-[#114C2A] text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-[#1a663a] transition-colors shadow-md">
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportExcel}
+            disabled={transactions.length === 0}
+            className="bg-white text-slate-700 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-50 border border-gray-200 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4" /> Export Excel
+          </button>
+          <button onClick={fetchData} className="bg-[#114C2A] text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-[#1a663a] transition-colors shadow-md">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* Status Summary Cards */}

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/components/cart/CartProvider";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -24,6 +25,7 @@ export default function RootLayout({
         <AuthProvider>
           <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""}>
             <CartProvider>{children}</CartProvider>
+            <Toaster richColors position="top-right" />
           </GoogleOAuthProvider>
         </AuthProvider>
       </body>

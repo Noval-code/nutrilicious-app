@@ -46,19 +46,61 @@ def _generate_otp(length: int = 6) -> str:
     return ''.join(random.choices(string.digits, k=length))
 
 
+def _build_email_html(title: str, subtitle: str, otp: str, accent_color: str, accent_bg: str) -> str:
+    return f"""
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f8fafc;font-family:Arial,sans-serif;color:#0f172a;">
+  <div style="padding:24px 12px;">
+    <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:24px;overflow:hidden;box-shadow:0 10px 30px rgba(15, 23, 42, 0.08);">
+      <div style="background:linear-gradient(135deg, #114C2A, #1a663a);padding:28px 24px;text-align:center;color:#ffffff;">
+        <div style="font-size:28px;font-weight:800;letter-spacing:0.3px;">Nutrilicious</div>
+        <div style="font-size:14px;opacity:0.9;margin-top:6px;">Makan Sehat Hidup Lebih Kuat</div>
+      </div>
+      <div style="padding:32px 24px;">
+        <h1 style="margin:0 0 12px;font-size:24px;line-height:1.3;color:#0f172a;text-align:center;">{title}</h1>
+        <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#475569;text-align:center;">{subtitle}</p>
+        <div style="margin:0 auto 24px;max-width:280px;background:{accent_bg};border:2px dashed {accent_color};border-radius:20px;padding:20px 16px;text-align:center;">
+          <div style="font-size:13px;color:#64748b;font-weight:600;margin-bottom:10px;">Kode OTP Anda</div>
+          <div style="font-size:34px;line-height:1;font-weight:800;letter-spacing:10px;color:{accent_color};">{otp}</div>
+        </div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:16px 18px;margin-bottom:20px;">
+          <p style="margin:0;font-size:14px;line-height:1.7;color:#334155;">
+            Kode ini berlaku selama <strong>15 menit</strong>. Demi keamanan akun Anda, jangan bagikan kode ini kepada siapa pun.
+          </p>
+        </div>
+        <p style="margin:0;font-size:13px;line-height:1.7;color:#64748b;text-align:center;">
+          Jika Anda tidak melakukan permintaan ini, abaikan email ini.
+        </p>
+      </div>
+      <div style="padding:18px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
+        <p style="margin:0;font-size:12px;line-height:1.6;color:#94a3b8;">
+          Email ini dikirim otomatis oleh sistem Nutrilicious Food.
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+    """
+
+
 def _send_verification_email(mail, to_email: str, otp: str, name: str):
     """Kirim email berisi kode OTP verifikasi."""
     subject = "Kode Verifikasi Akun Nutrilicious"
     body = f"""
 Halo {name},
 
-Terima kasih sudah mendaftar di Nutrilicious! 🥗
+Terima kasih sudah mendaftar di Nutrilicious.
 
 Gunakan kode berikut untuk memverifikasi akun Anda:
 
-    ┌─────────────────┐
-    │   {otp}   │
-    └─────────────────┘
+{otp}
 
 Kode ini berlaku selama 15 menit.
 
@@ -67,7 +109,45 @@ Jika Anda tidak merasa mendaftar, abaikan email ini.
 Salam sehat,
 Tim Nutrilicious Food
     """
-    msg = Message(subject=subject, recipients=[to_email], body=body)
+    html = _build_email_html(
+        title="Verifikasi Akun Anda",
+        subtitle=f"Halo {name}, masukkan kode OTP berikut untuk menyelesaikan pendaftaran akun Anda.",
+        otp=otp,
+        accent_color="#114C2A",
+        accent_bg="#f0fdf4",
+    )
+    msg = Message(subject=subject, recipients=[to_email], body=body, html=html)
+    mail.send(msg)
+
+
+def _send_reset_password_email(mail, to_email: str, otp: str, name: str):
+    """Kirim email berisi kode OTP untuk reset password."""
+    subject = "Reset Password Akun Nutrilicious"
+    body = f"""
+Halo {name},
+
+Kami menerima permintaan untuk mereset password akun Anda.
+
+Gunakan kode berikut untuk mengatur ulang password Anda:
+
+{otp}
+
+Kode ini berlaku selama 15 menit.
+
+Jika Anda tidak meminta reset password, abaikan email ini.
+Password Anda tidak akan berubah.
+
+Salam sehat,
+Tim Nutrilicious Food
+    """
+    html = _build_email_html(
+        title="Atur Ulang Kata Sandi",
+        subtitle=f"Halo {name}, masukkan kode OTP berikut untuk melanjutkan reset password akun Anda.",
+        otp=otp,
+        accent_color="#d97706",
+        accent_bg="#fffbeb",
+    )
+    msg = Message(subject=subject, recipients=[to_email], body=body, html=html)
     mail.send(msg)
 
 
@@ -519,32 +599,6 @@ def change_password():
 # ──────────────────────────────────────────────────────────────────────────────
 # POST /api/auth/forgot-password
 # ──────────────────────────────────────────────────────────────────────────────
-def _send_reset_password_email(mail, to_email: str, otp: str, name: str):
-    """Kirim email berisi kode OTP untuk reset password."""
-    subject = "Reset Password Akun Nutrilicious"
-    body = f"""
-Halo {name},
-
-Kami menerima permintaan untuk mereset password akun Anda.
-
-Gunakan kode berikut untuk mengatur ulang password Anda:
-
-    ┌─────────────────┐
-    │   {otp}   │
-    └─────────────────┘
-
-Kode ini berlaku selama 15 menit.
-
-Jika Anda tidak meminta reset password, abaikan email ini.
-Password Anda tidak akan berubah.
-
-Salam sehat,
-Tim Nutrilicious Food
-    """
-    msg = Message(subject=subject, recipients=[to_email], body=body)
-    mail.send(msg)
-
-
 @auth_bp.route('/forgot-password', methods=['POST'])
 def forgot_password():
     """Kirim OTP reset password ke email user."""

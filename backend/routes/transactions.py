@@ -12,6 +12,7 @@ import xendit
 from xendit.apis import InvoiceApi
 from xendit.invoice.model.create_invoice_request import CreateInvoiceRequest
 from xendit.invoice.model.invoice_item import InvoiceItem
+from routes.stock_deduction import deduct_stock_for_transaction, restore_stock_for_transaction
 
 transactions_bp = Blueprint('transactions', __name__)
 
@@ -178,6 +179,7 @@ def create_transaction():
         'payment_status': 'PENDING',
         'xendit_invoice_id': '',
         'xendit_invoice_url': '',
+        'stock_deducted': False,  # Flag: apakah stok bahan baku sudah dikurangi
         'created_at': now,
         'updated_at': now,
     }
@@ -314,6 +316,13 @@ def xendit_webhook():
         print(f"[WARNING] Transaksi dengan order_id {external_id} tidak ditemukan")
         return jsonify({'error': 'Transaction not found'}), 404
     
+    # Auto-deduct stok bahan baku saat pembayaran dikonfirmasi
+    if new_status == 'confirmed':
+        txn = db['transactions'].find_one({'order_id': external_id})
+        if txn and not txn.get('stock_deducted'):
+            deduct_result = deduct_stock_for_transaction(db, txn)
+            print(f"[STOCK] Webhook deduct untuk {external_id}: {deduct_result['deducted_count']} bahan dikurangi")
+    
     print(f"[OK] Transaksi {external_id} diupdate ke status: {new_status}")
     return jsonify({'message': 'Webhook processed successfully'}), 200
 
@@ -350,6 +359,13 @@ def update_transaction_status(transaction_id):
             'error': f'Status tidak valid. Pilih: {", ".join(valid_statuses)}'
         }), 400
     
+    # Ambil transaksi saat ini sebelum update (untuk cek status lama)
+    txn_before = db['transactions'].find_one({'_id': ObjectId(transaction_id)})
+    if not txn_before:
+        return jsonify({'error': 'Transaksi tidak ditemukan'}), 404
+    
+    old_status = txn_before.get('status')
+    
     result = db['transactions'].update_one(
         {'_id': ObjectId(transaction_id)},
         {'$set': {
@@ -358,8 +374,16 @@ def update_transaction_status(transaction_id):
         }}
     )
     
-    if result.matched_count == 0:
-        return jsonify({'error': 'Transaksi tidak ditemukan'}), 404
+    # Auto-deduct stok saat admin mengubah status ke confirmed
+    if new_status == 'confirmed' and not txn_before.get('stock_deducted'):
+        txn_updated = db['transactions'].find_one({'_id': ObjectId(transaction_id)})
+        deduct_result = deduct_stock_for_transaction(db, txn_updated)
+        print(f"[STOCK] Manual confirm deduct: {deduct_result['deducted_count']} bahan dikurangi")
+    
+    # Restore stok saat order yang sudah dikonfirmasi dibatalkan
+    if new_status == 'cancelled' and txn_before.get('stock_deducted'):
+        restore_result = restore_stock_for_transaction(db, txn_before)
+        print(f"[STOCK] Cancel restore: {restore_result['restored_count']} bahan dikembalikan")
     
     updated = db['transactions'].find_one({'_id': ObjectId(transaction_id)})
     return jsonify(serialize_transaction(updated))
@@ -424,6 +448,12 @@ def check_payment_status(order_id):
                 )
                 
                 print(f"[SYNC] Transaksi {order_id} disinkronkan dari Xendit: {xendit_status} -> {new_status}")
+                
+                # Auto-deduct stok saat payment disinkronkan ke confirmed
+                if new_status == 'confirmed' and not txn.get('stock_deducted'):
+                    txn_fresh = db['transactions'].find_one({'order_id': order_id})
+                    deduct_result = deduct_stock_for_transaction(db, txn_fresh)
+                    print(f"[STOCK] Sync deduct untuk {order_id}: {deduct_result['deducted_count']} bahan dikurangi")
                 
                 # Re-fetch updated transaction
                 txn = db['transactions'].find_one({'order_id': order_id})
