@@ -44,5 +44,6 @@ backend/rag/__pycache__/
 # environment files (all levels)
 .env
 .env.local
+backend/.env
 !.env.example
 !backend/.env.example
