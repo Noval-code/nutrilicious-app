@@ -10,7 +10,7 @@ import { UserDropdown } from "./UserDropdown";
 
 const navItems = [
   { href: "#menu-catalog", label: "Katalog Menu" },
-  { href: "#paket", label: "Paket Diet" },
+  { href: "#pricing", label: "Paket" },
   { href: "#tentang", label: "Tentang Kami" },
 ];
 

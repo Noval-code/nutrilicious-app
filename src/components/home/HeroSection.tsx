@@ -33,12 +33,6 @@ export function HeroSection() {
         <Image src="https://res.cloudinary.com/daxxzeeyr/image/upload/v1779383066/nutrilicious/static/a37jj4jsbdslvqw27m48.png" alt="Tomat" width={80} height={80} className="object-contain" loading="lazy" sizes="(max-width: 768px) 50px, 70px" />
       </div>
 
-      {/* Latar belakang lengkungan mirip inspirasi */}
-      <div className="absolute bottom-0 left-0 right-0 w-full overflow-hidden leading-none z-0">
-        <svg className="relative block w-full h-[60px] md:h-[120px]" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
-          <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V0C71.39,28.27,156.4,49.88,252.89,56.44Z" className="fill-slate-50/80"></path>
-        </svg>
-      </div>
 
       {/* Teks Konten Utama (z-10, Posisi Tengah) */}
       <div className="container relative z-10 mx-auto px-4 md:px-6 flex flex-col items-center text-center space-y-10">
