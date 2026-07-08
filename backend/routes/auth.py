@@ -7,8 +7,11 @@ Menggunakan JWT + bcrypt + Flask-Mail (OTP via SMTP)
 import re
 import bcrypt
 import random
+import smtplib
 import string
 from datetime import datetime, timedelta, timezone
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import (
@@ -16,7 +19,6 @@ from flask_jwt_extended import (
     jwt_required,
     get_jwt_identity,
 )
-from flask_mail import Message
 from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
 
@@ -90,7 +92,31 @@ def _build_email_html(title: str, subtitle: str, otp: str, accent_color: str, ac
     """
 
 
-def _send_verification_email(mail, to_email: str, otp: str, name: str):
+def _send_email(to_email: str, subject: str, body: str, html: str):
+    sender = current_app.config.get('MAIL_DEFAULT_SENDER') or current_app.config.get('MAIL_USERNAME')
+    username = current_app.config.get('MAIL_USERNAME')
+    password = current_app.config.get('MAIL_PASSWORD')
+    server = current_app.config.get('MAIL_SERVER')
+    port = int(current_app.config.get('MAIL_PORT') or 587)
+    use_tls = bool(current_app.config.get('MAIL_USE_TLS'))
+    timeout = int(current_app.config.get('MAIL_TIMEOUT') or 10)
+
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = sender
+    msg['To'] = to_email
+    msg.attach(MIMEText(body, 'plain', 'utf-8'))
+    msg.attach(MIMEText(html, 'html', 'utf-8'))
+
+    with smtplib.SMTP(server, port, timeout=timeout) as smtp:
+        if use_tls:
+            smtp.starttls()
+        if username and password:
+            smtp.login(username, password)
+        smtp.sendmail(sender, [to_email], msg.as_string())
+
+
+def _send_verification_email(to_email: str, otp: str, name: str):
     """Kirim email berisi kode OTP verifikasi."""
     subject = "Kode Verifikasi Akun Nutrilicious"
     body = f"""
@@ -116,11 +142,10 @@ Tim Nutrilicious Food
         accent_color="#114C2A",
         accent_bg="#f0fdf4",
     )
-    msg = Message(subject=subject, recipients=[to_email], body=body, html=html)
-    mail.send(msg)
+    _send_email(to_email, subject, body, html)
 
 
-def _send_reset_password_email(mail, to_email: str, otp: str, name: str):
+def _send_reset_password_email(to_email: str, otp: str, name: str):
     """Kirim email berisi kode OTP untuk reset password."""
     subject = "Reset Password Akun Nutrilicious"
     body = f"""
@@ -147,8 +172,7 @@ Tim Nutrilicious Food
         accent_color="#d97706",
         accent_bg="#fffbeb",
     )
-    msg = Message(subject=subject, recipients=[to_email], body=body, html=html)
-    mail.send(msg)
+    _send_email(to_email, subject, body, html)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -200,8 +224,7 @@ def register():
     }
 
     try:
-        from app import mail as flask_mail_instance
-        _send_verification_email(flask_mail_instance, email, otp, name)
+        _send_verification_email(email, otp, name)
     except Exception as e:
         current_app.logger.exception(f"Gagal kirim email OTP ke {email}: {e}")
         return jsonify({'error': 'Gagal mengirim OTP ke email. Silakan coba lagi atau gunakan email lain.'}), 502
@@ -294,8 +317,7 @@ def resend_otp():
     otp_expires = datetime.now(timezone.utc) + timedelta(minutes=15)
 
     try:
-        from app import mail as flask_mail_instance
-        _send_verification_email(flask_mail_instance, email, otp, user['name'])
+        _send_verification_email(email, otp, user['name'])
     except Exception as e:
         current_app.logger.exception(f"Gagal kirim ulang OTP ke {email}: {e}")
         return jsonify({'error': 'Gagal mengirim OTP ke email. Silakan coba lagi.'}), 502
@@ -631,8 +653,7 @@ def forgot_password():
     )
 
     try:
-        from app import mail as flask_mail_instance
-        _send_reset_password_email(flask_mail_instance, email, otp, user['name'])
+        _send_reset_password_email(email, otp, user['name'])
     except Exception as e:
         current_app.logger.warning(f"Gagal kirim email reset password: {e}")
         current_app.logger.info(f"[DEV] Reset OTP untuk {email}: {otp}")
