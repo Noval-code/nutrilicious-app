@@ -7,8 +7,13 @@ Mengorkestrasi seluruh alur Retrieval-Augmented Generation:
 Module ini adalah entry point utama yang digunakan oleh API route.
 """
 
+from threading import Lock
+
 from rag.retriever import retrieve
 from rag.generator import generate_response
+from rag.indexer import index_knowledge_base
+
+_reindex_lock = Lock()
 
 
 def chat(message, history=None):
@@ -37,12 +42,28 @@ def chat(message, history=None):
         }
 
     try:
-        # Step 1: Retrieve dokumen relevan
         retrieval = retrieve(query=message, top_k=5)
+    except FileNotFoundError:
+        try:
+            with _reindex_lock:
+                index_knowledge_base()
+            retrieval = retrieve(query=message, top_k=5)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"[RAG AUTO-REINDEX ERROR] {type(e).__name__}: {e}")
+            return {
+                "reply": (
+                    "⚠️ Knowledge base sedang disiapkan, tetapi indexing belum berhasil. "
+                    "Silakan coba lagi beberapa saat lagi."
+                ),
+                "sources": [],
+            }
+
+    try:
         context_docs = retrieval["documents"]
         sources = retrieval["sources"]
 
-        # Step 2: Generate jawaban dengan LLM
         reply = generate_response(
             query=message,
             context_docs=context_docs,
@@ -54,14 +75,6 @@ def chat(message, history=None):
             "sources": sources,
         }
 
-    except FileNotFoundError:
-        return {
-            "reply": (
-                "⚠️ Knowledge base belum siap. "
-                "Silakan minta admin menjalankan indexing terlebih dahulu."
-            ),
-            "sources": [],
-        }
     except Exception as e:
         import traceback
         traceback.print_exc()
