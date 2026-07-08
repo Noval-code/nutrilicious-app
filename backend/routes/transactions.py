@@ -26,6 +26,14 @@ def get_xendit_client():
     return xendit.ApiClient()
 
 
+def normalize_xendit_status(status):
+    value = getattr(status, 'value', status)
+    value = str(value or '').upper()
+    if '.' in value:
+        value = value.rsplit('.', 1)[-1]
+    return value
+
+
 def serialize_transaction(txn):
     """Convert MongoDB document to JSON-serializable dict"""
     txn['_id'] = str(txn['_id'])
@@ -279,7 +287,7 @@ def xendit_webhook():
         return jsonify({'error': 'No data received'}), 400
     
     external_id = data.get('external_id', '')  # Ini adalah order_id kita
-    status = data.get('status', '')
+    status = normalize_xendit_status(data.get('status', ''))
     payment_method = data.get('payment_method', '')
     payment_channel = data.get('payment_channel', '')
     paid_amount = data.get('paid_amount', 0)
@@ -419,7 +427,7 @@ def check_payment_status(order_id):
             invoice_api = InvoiceApi(xendit_client)
             invoice = invoice_api.get_invoice_by_id(invoice_id=txn['xendit_invoice_id'])
             
-            xendit_status = invoice.status
+            xendit_status = normalize_xendit_status(invoice.status)
             
             status_map = {
                 'PAID': 'confirmed',
