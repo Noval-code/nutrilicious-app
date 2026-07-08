@@ -90,6 +90,7 @@ def create_app():
     app.config['MAIL_USERNAME']       = Config.MAIL_USERNAME
     app.config['MAIL_PASSWORD']       = Config.MAIL_PASSWORD
     app.config['MAIL_DEFAULT_SENDER'] = Config.MAIL_DEFAULT_SENDER
+    app.config['MAIL_TIMEOUT']        = Config.MAIL_TIMEOUT
     app.config['MAIL_DEBUG']          = False   # Jangan tampilkan log SMTP ke terminal
 
     # Inisialisasi Cloudinary

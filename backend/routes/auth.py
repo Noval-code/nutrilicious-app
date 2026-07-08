@@ -183,7 +183,7 @@ def register():
     otp_expires = datetime.now(timezone.utc) + timedelta(minutes=15)
 
     now = datetime.now(timezone.utc)
-    db['users'].insert_one({
+    user_doc = {
         'name': name,
         'email': email,
         'password': hashed_pw,
@@ -197,16 +197,16 @@ def register():
         'role': 'user',
         'created_at': now,
         'updated_at': now,
-    })
+    }
 
-    # Kirim email OTP
     try:
         from app import mail as flask_mail_instance
         _send_verification_email(flask_mail_instance, email, otp, name)
     except Exception as e:
-        current_app.logger.warning(f"Gagal kirim email OTP: {e}")
-        # Tetap lanjutkan — OTP bisa dilihat di log untuk development
-        current_app.logger.info(f"[DEV] OTP untuk {email}: {otp}")
+        current_app.logger.exception(f"Gagal kirim email OTP ke {email}: {e}")
+        return jsonify({'error': 'Gagal mengirim OTP ke email. Silakan coba lagi atau gunakan email lain.'}), 502
+
+    db['users'].insert_one(user_doc)
 
     return jsonify({'message': 'Registrasi berhasil! Cek email Anda untuk kode verifikasi.'}), 201
 
@@ -293,17 +293,17 @@ def resend_otp():
     otp = _generate_otp()
     otp_expires = datetime.now(timezone.utc) + timedelta(minutes=15)
 
-    db['users'].update_one(
-        {'email': email},
-        {'$set': {'otp': otp, 'otp_expires': otp_expires}}
-    )
-
     try:
         from app import mail as flask_mail_instance
         _send_verification_email(flask_mail_instance, email, otp, user['name'])
     except Exception as e:
-        current_app.logger.warning(f"Gagal kirim ulang OTP: {e}")
-        current_app.logger.info(f"[DEV] OTP baru untuk {email}: {otp}")
+        current_app.logger.exception(f"Gagal kirim ulang OTP ke {email}: {e}")
+        return jsonify({'error': 'Gagal mengirim OTP ke email. Silakan coba lagi.'}), 502
+
+    db['users'].update_one(
+        {'email': email},
+        {'$set': {'otp': otp, 'otp_expires': otp_expires}}
+    )
 
     return jsonify({'message': 'Kode OTP baru telah dikirim ke email Anda.'}), 200
 
