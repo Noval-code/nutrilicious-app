@@ -483,12 +483,12 @@ export default function PredictionPage() {
           {isTraining ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Training Model...
+              Memulai Prediksi...
             </>
           ) : (
             <>
               <Brain className="w-5 h-5" />
-              Train Model
+              Mulai Prediksi
             </>
           )}
         </button>
@@ -518,7 +518,7 @@ export default function PredictionPage() {
           </div>
           <h3 className="text-lg font-bold text-slate-700 mb-2">Model Belum Di-training</h3>
           <p className="text-slate-500 text-sm max-w-md mx-auto mb-6">
-            Klik tombol <strong>&quot;Train Model&quot;</strong> di atas untuk melatih model Random Forest dengan data transaksi historis Anda.
+            Klik tombol <strong>&quot;Mulai Prediksi&quot;</strong> di atas untuk melatih model Random Forest dengan data transaksi historis Anda.
           </p>
           <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
             <Info className="w-4 h-4" />
