@@ -259,7 +259,7 @@ def train_model():
 
     # 3. Split data menggunakan TimeSeriesSplit (lebih cocok untuk time series)
     print("[3/6] Splitting data dengan TimeSeriesSplit...")
-    tscv = TimeSeriesSplit(n_splits=5)
+    tscv = TimeSeriesSplit(n_splits=3)
 
     # Ambil semua fitur dan target
     X_all = df[FEATURE_COLUMNS]
@@ -279,23 +279,23 @@ def train_model():
     # 4. Training dengan GridSearchCV + TimeSeriesSplit CV
     print("[4/6] Training Random Forest + GridSearchCV (TimeSeriesSplit CV)...")
     param_grid = {
-        'n_estimators': [100, 200, 300, 500],
-        'max_depth': [5, 10, 15, 20, None],
-        'min_samples_split': [2, 3, 5],
+        'n_estimators': [80, 120],
+        'max_depth': [8, 12],
+        'min_samples_split': [2],
         'min_samples_leaf': [1, 2],
     }
 
-    rf = RandomForestRegressor(random_state=42)
+    rf = RandomForestRegressor(random_state=42, n_jobs=1)
 
     # Gunakan TimeSeriesSplit juga untuk cross-validation dalam GridSearch
-    tscv_inner = TimeSeriesSplit(n_splits=4)
+    tscv_inner = TimeSeriesSplit(n_splits=2)
 
     grid_search = GridSearchCV(
         estimator=rf,
         param_grid=param_grid,
         cv=tscv_inner,
         scoring='neg_mean_absolute_error',
-        n_jobs=-1,
+        n_jobs=1,
         verbose=0,
     )
 
@@ -322,6 +322,7 @@ def train_model():
     final_model = RandomForestRegressor(
         **grid_search.best_params_,
         random_state=42,
+        n_jobs=1,
     )
     final_model.fit(X_all, y_all)
 
