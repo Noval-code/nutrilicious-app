@@ -1,10 +1,11 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { authFetch } from '@/lib/authFetch';
 import { AddressModal, UserAddress } from '@/components/address/AddressModal';
+import { toast } from 'sonner';
 
 export interface CartItem {
   id: string; // unique key: slug-duration-meal
@@ -51,6 +52,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const { user, isLoaded, isSignedIn } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
 
   // Fetch user profile (address) on login
   useEffect(() => {
@@ -123,8 +125,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addItem = useCallback((item: Omit<CartItem, 'id' | 'quantity'>) => {
     // Guard 1: Harus login dulu
     if (!isSignedIn) {
-      alert("Silakan login terlebih dahulu untuk menambahkan ke keranjang.");
-      window.location.href = '/sign-in';
+      toast.error("Silakan login terlebih dahulu untuk menambahkan ke keranjang.");
+      router.push('/sign-in');
       return;
     }
 
@@ -138,7 +140,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     // Semua sudah aman → tambahkan ke keranjang
     doAddItem(item);
-  }, [isSignedIn, userAddress, doAddItem]);
+  }, [isSignedIn, userAddress, doAddItem, router]);
 
   const removeItem = useCallback((id: string) => {
     setItems(prev => prev.filter(i => i.id !== id));
