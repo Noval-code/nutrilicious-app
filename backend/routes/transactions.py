@@ -91,26 +91,37 @@ def get_transactions():
     if request.args.get('sort') == 'asc':
         sort_order = 1
     
-    # Pagination
-    try:
-        page = max(1, int(request.args.get('page', 1)))
-    except (ValueError, TypeError):
-        page = 1
-    try:
-        limit = min(100, max(1, int(request.args.get('limit', 15))))
-    except (ValueError, TypeError):
-        limit = 15
-    
+    no_limit = request.args.get('no_limit') == 'true'
     total = db['transactions'].count_documents(query)
-    total_pages = max(1, -(-total // limit))  # ceil division
-    skip = (page - 1) * limit
     
-    transactions = list(
-        db['transactions'].find(query)
-        .sort('created_at', sort_order)
-        .skip(skip)
-        .limit(limit)
-    )
+    if no_limit:
+        transactions = list(
+            db['transactions'].find(query)
+            .sort('created_at', sort_order)
+        )
+        page = 1
+        limit = total
+        total_pages = 1
+    else:
+        # Pagination
+        try:
+            page = max(1, int(request.args.get('page', 1)))
+        except (ValueError, TypeError):
+            page = 1
+        try:
+            limit = min(100, max(1, int(request.args.get('limit', 15))))
+        except (ValueError, TypeError):
+            limit = 15
+        
+        total_pages = max(1, -(-total // limit))  # ceil division
+        skip = (page - 1) * limit
+        
+        transactions = list(
+            db['transactions'].find(query)
+            .sort('created_at', sort_order)
+            .skip(skip)
+            .limit(limit)
+        )
     
     return jsonify({
         'data': [serialize_transaction(t) for t in transactions],
@@ -179,6 +190,8 @@ def create_transaction():
         'customer_name': data['customer_name'],
         'customer_phone': data['customer_phone'],
         'customer_address': data.get('customer_address', ''),
+        'customer_lat': data.get('customer_lat', None),
+        'customer_lng': data.get('customer_lng', None),
         'customer_notes': data.get('customer_notes', ''),
         'items': items,
         'total': total,

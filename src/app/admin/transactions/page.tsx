@@ -21,6 +21,8 @@ interface Transaction {
   customer_name: string;
   customer_phone: string;
   customer_address: string;
+  customer_lat?: number;
+  customer_lng?: number;
   customer_notes: string;
   items: TransactionItem[];
   total: number;
@@ -68,6 +70,7 @@ export default function TransactionsPage() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -141,46 +144,75 @@ export default function TransactionsPage() {
     }
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (transactions.length === 0) return;
+    setIsExporting(true);
 
-    const dataToExport = transactions.map(txn => {
-      const statusLabel = STATUS_CONFIG[txn.status]?.label || txn.status;
-      const itemsString = txn.items.map(item => `${item.package_name} (${item.duration} - ${item.meal_type}) x${item.quantity}`).join('; ');
+    try {
+      const params = new URLSearchParams();
+      params.append('no_limit', 'true');
+      if (debouncedSearch) params.append('search', debouncedSearch);
+      if (filterStatus && filterStatus !== 'all') params.append('status', filterStatus);
+      params.append('sort', sortOrder);
 
-      return {
-        'Order ID': txn.order_id,
-        'Tanggal': formatDate(txn.created_at),
-        'Nama Pelanggan': txn.customer_name,
-        'Nomor Telepon': txn.customer_phone,
-        'Alamat Pengiriman': txn.customer_address || '-',
-        'Catatan': txn.customer_notes || '-',
-        'Item Pesanan': itemsString,
-        'Total Pembayaran': txn.total,
-        'Status Pesanan': statusLabel,
-        'Metode Pembayaran': txn.payment_method || '-',
-        'Status Pembayaran': txn.payment_status || '-'
-      };
-    });
+      const res = await fetch(`${API_URL}/transactions/?${params.toString()}`);
+      if (!res.ok) throw new Error('Gagal mengunduh data transaksi');
 
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Transaksi');
+      const result = await res.json();
+      const allTxns: Transaction[] = result.data || [];
 
-    // Auto-fit columns
-    const maxLens = Object.keys(dataToExport[0]).map(key => {
-      let maxLen = key.length;
-      dataToExport.forEach(row => {
-        const val = row[key as keyof typeof row];
-        if (val) {
-          maxLen = Math.max(maxLen, val.toString().length);
-        }
+      if (allTxns.length === 0) {
+        alert("Tidak ada transaksi untuk diekspor");
+        return;
+      }
+
+      const dataToExport = allTxns.map(txn => {
+        const statusLabel = STATUS_CONFIG[txn.status]?.label || txn.status;
+        const itemsString = txn.items.map(item => `${item.package_name} (${item.duration} - ${item.meal_type}) x${item.quantity}`).join('; ');
+        const gmapsLink = txn.customer_lat && txn.customer_lng
+          ? `https://www.google.com/maps?q=${txn.customer_lat},${txn.customer_lng}`
+          : '-';
+
+        return {
+          'Order ID': txn.order_id,
+          'Tanggal': formatDate(txn.created_at),
+          'Nama Pelanggan': txn.customer_name,
+          'Nomor Telepon': txn.customer_phone,
+          'Alamat Pengiriman': txn.customer_address || '-',
+          'Link Google Maps': gmapsLink,
+          'Catatan': txn.customer_notes || '-',
+          'Item Pesanan': itemsString,
+          'Total Pembayaran': txn.total,
+          'Status Pesanan': statusLabel,
+          'Metode Pembayaran': txn.payment_method || '-',
+          'Status Pembayaran': txn.payment_status || '-'
+        };
       });
-      return { wch: maxLen + 3 };
-    });
-    worksheet['!cols'] = maxLens;
 
-    XLSX.writeFile(workbook, `Data_Pengantaran_Transaksi_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Transaksi');
+
+      // Auto-fit columns
+      const maxLens = Object.keys(dataToExport[0]).map(key => {
+        let maxLen = key.length;
+        dataToExport.forEach(row => {
+          const val = row[key as keyof typeof row];
+          if (val) {
+            maxLen = Math.max(maxLen, val.toString().length);
+          }
+        });
+        return { wch: maxLen + 3 };
+      });
+      worksheet['!cols'] = maxLens;
+
+      XLSX.writeFile(workbook, `Data_Pengantaran_Transaksi_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (err) {
+      console.error(err);
+      alert("Gagal mengekspor data transaksi");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const statusCards = [
@@ -202,10 +234,19 @@ export default function TransactionsPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleExportExcel}
-            disabled={transactions.length === 0}
+            disabled={transactions.length === 0 || isExporting}
             className="bg-white text-slate-700 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-50 border border-gray-200 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download className="w-4 h-4" /> Export Excel
+            {isExporting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+                Mengunduh...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" /> Export Excel
+              </>
+            )}
           </button>
           <button onClick={fetchData} className="bg-[#114C2A] text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-[#1a663a] transition-colors shadow-md">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
