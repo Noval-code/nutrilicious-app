@@ -125,6 +125,7 @@ interface Transaction {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
+  pending_payment: { label: 'Belum Bayar', color: 'text-orange-600', bg: 'bg-orange-50', icon: Receipt },
   pending:    { label: 'Menunggu',     color: 'text-amber-600',   bg: 'bg-amber-50',   icon: Clock },
   confirmed:  { label: 'Dikonfirmasi', color: 'text-blue-600',    bg: 'bg-blue-50',    icon: CheckCircle2 },
   processing: { label: 'Diproses',     color: 'text-violet-600',  bg: 'bg-violet-50',  icon: Loader2 },
@@ -176,8 +177,8 @@ export default function AdminDashboard() {
         ]);
         if (statsRes.ok) setTxnStats(await statsRes.json());
         if (txnRes.ok) {
-          const all = await txnRes.json();
-          setRecentTxns(all.slice(0, 5));
+          const result = await txnRes.json();
+          setRecentTxns((result.data || []).slice(0, 5));
         }
         if (dashRes.ok) {
           const dashData = await dashRes.json();
