@@ -18,7 +18,6 @@ interface TransactionItem {
 interface Transaction {
   _id: string;
   order_id: string;
-  user_id?: string;
   customer_name: string;
   customer_phone: string;
   customer_address: string;
@@ -171,19 +170,16 @@ export default function TransactionsPage() {
         const statusLabel = STATUS_CONFIG[txn.status]?.label || txn.status;
         const itemsString = txn.items.map(item => `${item.package_name} (${item.duration} - ${item.meal_type}) x${item.quantity}`).join('; ');
         const hasCoordinates = typeof txn.customer_lat === 'number' && typeof txn.customer_lng === 'number';
-        const coordinates = hasCoordinates ? `${txn.customer_lat},${txn.customer_lng}` : '-';
         const gmapsLink = hasCoordinates
           ? `https://www.google.com/maps?q=${txn.customer_lat},${txn.customer_lng}`
-          : '-';
+          : '';
 
         return {
-          'Jenis Data': txn.user_id === 'csv_import' ? 'Import Lama' : 'Transaksi Baru',
           'Order ID': txn.order_id,
           'Tanggal': formatDate(txn.created_at),
           'Nama Pelanggan': txn.customer_name,
           'Nomor Telepon': txn.customer_phone,
           'Alamat Pengiriman': txn.customer_address || '-',
-          'Koordinat Share Lok': coordinates,
           'Link Google Maps': gmapsLink,
           'Catatan': txn.customer_notes || '-',
           'Item Pesanan': itemsString,
