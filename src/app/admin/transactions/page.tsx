@@ -536,18 +536,14 @@ export default function TransactionsPage() {
                     <p className="text-sm font-bold text-slate-800">{selectedTxn.customer_phone}</p>
                   </div>
                 </div>
-                {selectedTxn.customer_address && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-400">Alamat</p>
-                    <p className="text-sm font-medium text-slate-700 leading-relaxed">{selectedTxn.customer_address}</p>
-                  </div>
-                )}
-                {selectedTxn.customer_notes && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-slate-400">Catatan</p>
-                    <p className="text-sm font-medium text-slate-600 italic">{selectedTxn.customer_notes}</p>
-                  </div>
-                )}
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-400">Alamat</p>
+                  <p className="text-sm font-medium text-slate-700 leading-relaxed">{selectedTxn.customer_address || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-400">Catatan</p>
+                  <p className="text-sm font-medium text-slate-600 italic">{selectedTxn.customer_notes || '-'}</p>
+                </div>
               </div>
 
               {/* Items */}
