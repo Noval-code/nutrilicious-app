@@ -122,9 +122,7 @@ def seed_packages():
         {
             "slug": "low-carbs",
             "category": "Low Carbs",
-            "icon": "Leaf",
             "description": "Diet rendah karbohidrat yang kaya akan serat. Pilihan cerdas untuk program weight loss intensif dan sehat.",
-            "subscribers": 45,
             "pricing": {
                 "5 Hari": {
                     "Lunch": { "normal": "180.000", "promo": "150.000" },
@@ -151,9 +149,7 @@ def seed_packages():
         {
             "slug": "healthy-food",
             "category": "Healthy Food",
-            "icon": "Salad",
             "description": "Pola makan seimbang dengan bahan berkualitas dan bernutrisi tinggi. Semakin mudah untuk menjaga pola hidup sehat.",
-            "subscribers": 82,
             "pricing": {
                 "5 Hari": {
                     "Lunch": { "normal": "180.000", "promo": "150.000" },
@@ -180,9 +176,7 @@ def seed_packages():
         {
             "slug": "muscle-gain",
             "category": "Muscle Gain",
-            "icon": "Dumbbell",
             "description": "Tinggi protein dan kalori optimal untuk mendukung hipertrofi otot dan recovery setelah latihan beban.",
-            "subscribers": 15,
             "pricing": {
                 "5 Hari": {
                     "Lunch": { "normal": "270.000", "promo": "225.000" },

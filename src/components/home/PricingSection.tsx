@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Leaf, Salad, Dumbbell, CalendarDays, Utensils, UtensilsCrossed, CheckCircle2, ShoppingCart, Check, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { CalendarDays, Utensils, UtensilsCrossed, CheckCircle2, ShoppingCart, Check, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useCart } from '@/components/cart/CartProvider';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
@@ -9,20 +9,11 @@ const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 const daysList = ["5 Hari", "6 Hari", "10 Hari", "30 Hari"];
 const mealTypesList = ["Lunch", "Dinner", "Lunch & Dinner"];
 
-// Map icon name strings from backend to Lucide components
-const ICON_MAP: Record<string, React.ReactNode> = {
-    Leaf: <Leaf className="w-8 h-8 md:w-10 md:h-10 text-inherit" />,
-    Salad: <Salad className="w-8 h-8 md:w-10 md:h-10 text-inherit" />,
-    Dumbbell: <Dumbbell className="w-8 h-8 md:w-10 md:h-10 text-inherit" />,
-};
-
 interface PackageData {
     _id: string;
     slug: string;
     category: string;
-    icon: string;
     description: string;
-    subscribers?: number;
     pricing: Record<string, Record<string, { normal: string; promo: string }>>;
 }
 
@@ -197,7 +188,6 @@ export function PricingSection() {
                                     const pricing = pkg.pricing?.[selectedDay]?.[selectedMeal];
                                     const itemKey = `${pkg.slug}-${selectedDay}-${selectedMeal}`;
                                     const justAdded = addedItems[itemKey];
-                                    const iconElement = ICON_MAP[pkg.icon] || <Leaf className="w-8 h-8 md:w-10 md:h-10 text-inherit" />;
 
                                     // Skip rendering if no pricing for this combination
                                     if (!pricing) return null;
@@ -205,13 +195,8 @@ export function PricingSection() {
                                     return (
                                         <div key={pkg._id} className="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl border border-gray-100 flex flex-col relative group transition-all duration-300">
 
-                                            <div className="flex items-start gap-4 mb-5">
-                                                <div className="w-16 h-16 rounded-2xl bg-[#f2f6f4] text-[#114C2A] flex items-center justify-center group-hover:bg-[#114C2A] group-hover:text-white transition-all duration-500 shadow-sm border border-[#e2eae4]">
-                                                    {iconElement}
-                                                </div>
-                                                <div className="pt-2">
-                                                    <h3 className="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight">{pkg.category}</h3>
-                                                </div>
+                                            <div className="mb-5">
+                                                <h3 className="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight">{pkg.category}</h3>
                                             </div>
                                             
                                             <p className="text-sm text-slate-500 mb-6 flex-grow leading-relaxed font-medium">

@@ -1,17 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Leaf, Salad, Dumbbell, Utensils, Moon, Check, Sparkles, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Utensils, Moon, Check, Sparkles, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import Image from 'next/image';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
-
-// Map icon names from database to Lucide components
-const ICON_MAP: Record<string, React.ReactNode> = {
-    Leaf: <Leaf className="w-5 h-5" />,
-    Salad: <Salad className="w-5 h-5" />,
-    Dumbbell: <Dumbbell className="w-5 h-5" />,
-};
 
 interface MenuDetail {
     _id: string;
@@ -49,7 +42,6 @@ interface PackageData {
     _id: string;
     slug: string;
     category: string;
-    icon: string;
     description: string;
 }
 
@@ -169,7 +161,6 @@ export function MenuCatalog() {
                         <div className="flex flex-wrap justify-center gap-3 mb-10">
                             {packages.map((pkg, idx) => {
                                 const isActive = idx === activePackageIdx;
-                                const iconEl = ICON_MAP[pkg.icon] || <Leaf className="w-5 h-5" />;
                                 return (
                                     <button
                                         key={pkg._id}
@@ -180,7 +171,6 @@ export function MenuCatalog() {
                                                 : 'bg-white text-slate-600 border border-gray-100 hover:bg-gray-50 hover:border-gray-200'
                                         }`}
                                     >
-                                        <span className={isActive ? 'text-[#F9A826]' : 'text-[#114C2A]'}>{iconEl}</span>
                                         {pkg.category}
                                     </button>
                                 );

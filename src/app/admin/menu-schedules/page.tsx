@@ -11,20 +11,11 @@ import {
   UtensilsCrossed,
   Moon,
   X,
-  Leaf,
-  Salad,
-  Dumbbell,
 } from 'lucide-react';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 
 const DAY_NAMES = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-
-const ICON_MAP: Record<string, React.ReactNode> = {
-  Leaf: <Leaf className="w-5 h-5" />,
-  Salad: <Salad className="w-5 h-5" />,
-  Dumbbell: <Dumbbell className="w-5 h-5" />,
-};
 
 interface MenuItem {
   _id: string;
@@ -58,7 +49,6 @@ interface PackageData {
   _id: string;
   slug: string;
   category: string;
-  icon: string;
   description: string;
 }
 
@@ -242,11 +232,6 @@ export default function MenuSchedulesPage() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      isSelected ? 'bg-[#114C2A] text-white' : 'bg-[#f2f6f4] text-[#114C2A]'
-                    }`}>
-                      {ICON_MAP[pkg.icon] || <Leaf className="w-5 h-5" />}
-                    </div>
                     <div className="flex-1 min-w-0">
                       <h3 className={`font-bold text-sm ${isSelected ? 'text-[#114C2A]' : 'text-slate-800'}`}>
                         {pkg.category}
@@ -299,9 +284,6 @@ export default function MenuSchedulesPage() {
                 <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-[#114C2A] to-[#1a663a]">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white/15 backdrop-blur rounded-xl flex items-center justify-center text-white">
-                        {ICON_MAP[selectedPkg?.icon || 'Leaf']}
-                      </div>
                       <div>
                         <h2 className="text-lg font-extrabold text-white">{selectedPkg?.category}</h2>
                         <p className="text-white/60 text-xs">Jadwal menu 6 hari (Senin–Sabtu)</p>

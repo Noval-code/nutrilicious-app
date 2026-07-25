@@ -47,9 +47,7 @@ def create_package():
     pkg = {
         'slug': data.get('slug', data['category'].lower().replace(' ', '-')),
         'category': data['category'],
-        'icon': data.get('icon', 'Leaf'),
         'description': data['description'],
-        'subscribers': data.get('subscribers', 0),
         'pricing': data['pricing'],
     }
     
@@ -66,7 +64,7 @@ def update_package(package_id):
     data = request.get_json()
     
     update_data = {}
-    for field in ['slug', 'category', 'icon', 'description', 'subscribers', 'pricing']:
+    for field in ['slug', 'category', 'description', 'pricing']:
         if field in data:
             update_data[field] = data[field]
     

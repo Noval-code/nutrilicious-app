@@ -2,15 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Plus, Edit2, Trash2, X, Save, CalendarDays, DollarSign, Loader2, Leaf, Salad, Dumbbell, AlertCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Save, CalendarDays, DollarSign, Loader2, AlertCircle } from 'lucide-react';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
-
-const ICON_OPTIONS = [
-  { value: 'Leaf', label: 'Leaf', icon: <Leaf className="w-6 h-6" /> },
-  { value: 'Salad', label: 'Salad', icon: <Salad className="w-6 h-6" /> },
-  { value: 'Dumbbell', label: 'Dumbbell', icon: <Dumbbell className="w-6 h-6" /> },
-];
 
 const DURATIONS = ["5 Hari", "6 Hari", "10 Hari", "30 Hari"];
 const MEAL_TYPES = ["Lunch", "Dinner", "Lunch & Dinner"];
@@ -21,9 +15,7 @@ interface PackageData {
   _id?: string;
   slug?: string;
   category: string;
-  icon: string;
   description: string;
-  subscribers?: number;
   pricing: Record<string, Record<string, { normal: string; promo: string }>>;
 }
 
@@ -40,9 +32,7 @@ const emptyPricing = (): PackageData['pricing'] => {
 
 const emptyForm = (): PackageData => ({
   category: '',
-  icon: 'Leaf',
   description: '',
-  subscribers: 0,
   pricing: emptyPricing(),
 });
 
@@ -162,9 +152,7 @@ export default function PackagesPage() {
       const payload = {
         category: formData.category,
         slug: formData.category.toLowerCase().replace(/\s+/g, '-'),
-        icon: formData.icon,
         description: formData.description,
-        subscribers: formData.subscribers || 0,
         pricing: formData.pricing,
       };
 
@@ -211,12 +199,6 @@ export default function PackagesPage() {
     }
   };
 
-  // Get icon component by name
-  const getIcon = (iconName: string) => {
-    const found = ICON_OPTIONS.find(i => i.value === iconName);
-    return found ? found.icon : <Leaf className="w-6 h-6" />;
-  };
-
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -254,12 +236,7 @@ export default function PackagesPage() {
           {packages.map(pkg => (
             <div key={pkg._id} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all group">
               <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#f2f6f4] text-[#114C2A] flex items-center justify-center">
-                    {getIcon(pkg.icon)}
-                  </div>
-                  <h3 className="text-xl font-extrabold text-slate-800">{pkg.category}</h3>
-                </div>
+                <h3 className="text-xl font-extrabold text-slate-800">{pkg.category}</h3>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => handleOpenEdit(pkg)} className="text-slate-400 hover:text-[#F9A826] p-1"><Edit2 className="w-4 h-4" /></button>
                   <button onClick={() => handleDelete(pkg._id!)} className="text-slate-400 hover:text-red-500 p-1"><Trash2 className="w-4 h-4" /></button>
@@ -267,21 +244,13 @@ export default function PackagesPage() {
               </div>
               <p className="text-sm text-slate-500 mb-6 min-h-[40px]">{pkg.description}</p>
               
-              <div className="flex items-center gap-4 border-t border-gray-100 pt-4">
-                <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                  <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                    <UsersIcon className="w-4 h-4" />
-                  </div>
-                  {pkg.subscribers || 0} Aktif
-                </div>
-                <div className="flex gap-2 ml-auto">
+              <div className="flex items-center justify-end gap-2 border-t border-gray-100 pt-4">
                   <button onClick={() => handleOpenEdit(pkg)} className="px-3 py-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 rounded-lg flex items-center gap-1 hover:bg-emerald-100">
                     <DollarSign className="w-3 h-3" /> Harga
                   </button>
                   <Link href="/admin/menu-schedules" className="px-3 py-1.5 text-xs font-bold text-amber-600 bg-amber-50 rounded-lg flex items-center gap-1 hover:bg-amber-100">
                     <CalendarDays className="w-3 h-3" /> Jadwal
                   </Link>
-                </div>
               </div>
             </div>
           ))}
@@ -355,25 +324,6 @@ export default function PackagesPage() {
                       placeholder="Deskripsi paket untuk pelanggan..."
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Pilih Ikon</label>
-                    <div className="flex gap-3">
-                      {ICON_OPTIONS.map(opt => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, icon: opt.value }))}
-                          className={`w-14 h-14 rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-all
-                            ${formData.icon === opt.value 
-                              ? 'bg-emerald-50 text-emerald-600 border-2 border-emerald-500 shadow-sm' 
-                              : 'bg-slate-50 text-slate-400 border-2 border-transparent hover:border-slate-200'}
-                          `}
-                        >
-                          {opt.icon}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               )}
 
@@ -442,9 +392,4 @@ export default function PackagesPage() {
       )}
     </div>
   );
-}
-
-// Dummy icon component
-function UsersIcon(props: any) {
-  return <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
 }
