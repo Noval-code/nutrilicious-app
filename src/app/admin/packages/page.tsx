@@ -14,7 +14,7 @@ const MEAL_TYPES = ["Lunch", "Dinner", "Lunch & Dinner"];
 interface PackageData {
   _id?: string;
   slug?: string;
-  category: string;
+  name: string;
   description: string;
   pricing: Record<string, Record<string, { normal: string; promo: string }>>;
 }
@@ -31,7 +31,7 @@ const emptyPricing = (): PackageData['pricing'] => {
 };
 
 const emptyForm = (): PackageData => ({
-  category: '',
+  name: '',
   description: '',
   pricing: emptyPricing(),
 });
@@ -134,7 +134,7 @@ export default function PackagesPage() {
   // Save (create or update)
   const handleSave = async () => {
     // Validation
-    if (!formData.category.trim()) {
+    if (!formData.name.trim()) {
       setError('Nama paket wajib diisi');
       setActiveTab('info');
       return;
@@ -150,8 +150,8 @@ export default function PackagesPage() {
       setError(null);
 
       const payload = {
-        category: formData.category,
-        slug: formData.category.toLowerCase().replace(/\s+/g, '-'),
+        name: formData.name,
+        slug: formData.name.toLowerCase().replace(/\s+/g, '-'),
         description: formData.description,
         pricing: formData.pricing,
       };
@@ -236,7 +236,7 @@ export default function PackagesPage() {
           {packages.map(pkg => (
             <div key={pkg._id} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all group">
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-extrabold text-slate-800">{pkg.category}</h3>
+                <h3 className="text-xl font-extrabold text-slate-800">{pkg.name}</h3>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => handleOpenEdit(pkg)} className="text-slate-400 hover:text-[#F9A826] p-1"><Edit2 className="w-4 h-4" /></button>
                   <button onClick={() => handleDelete(pkg._id!)} className="text-slate-400 hover:text-red-500 p-1"><Trash2 className="w-4 h-4" /></button>
@@ -309,8 +309,8 @@ export default function PackagesPage() {
                     <label className="block text-sm font-bold text-slate-700 mb-2">Nama Paket <span className="text-red-400">*</span></label>
                     <input 
                       type="text" 
-                      value={formData.category}
-                      onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                      value={formData.name}
+                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                       className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#F9A826] font-medium" 
                       placeholder="Contoh: Super Weight Loss" 
                     />

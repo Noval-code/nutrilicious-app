@@ -183,7 +183,7 @@ def test_packages():
 
     # CREATE
     new_data = {
-        'category': 'Test Package CRUD',
+        'name': 'Test Package CRUD',
         'description': 'Paket uji coba',
         'pricing': {
             '5 Hari': {
@@ -196,7 +196,7 @@ def test_packages():
     created = r.json()
     pkg_id = created.get('_id', '')
     test("Created package has _id", bool(pkg_id))
-    test("Created package category matches", created.get('category') == 'Test Package CRUD')
+    test("Created package name matches", created.get('name') == 'Test Package CRUD')
     test("Slug auto-generated", created.get('slug') == 'test-package-crud')
 
     # GET BY ID
@@ -204,10 +204,10 @@ def test_packages():
     test("GET /packages/<id> returns 200", r.status_code == 200, f"got {r.status_code}")
 
     # UPDATE
-    r = requests.put(f'{API}/packages/{pkg_id}', json={'category': 'Test Updated', 'description': 'Updated desc'})
+    r = requests.put(f'{API}/packages/{pkg_id}', json={'name': 'Test Updated', 'description': 'Updated desc'})
     test("PUT /packages/<id> returns 200", r.status_code == 200, f"got {r.status_code}")
     updated = r.json()
-    test("Updated category matches", updated.get('category') == 'Test Updated')
+    test("Updated name matches", updated.get('name') == 'Test Updated')
     test("Updated description matches", updated.get('description') == 'Updated desc')
 
     # DELETE

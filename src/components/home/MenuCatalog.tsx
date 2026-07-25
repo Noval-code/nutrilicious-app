@@ -41,7 +41,7 @@ interface ScheduleData {
 interface PackageData {
     _id: string;
     slug: string;
-    category: string;
+    name: string;
     description: string;
 }
 
@@ -171,7 +171,7 @@ export function MenuCatalog() {
                                                 : 'bg-white text-slate-600 border border-gray-100 hover:bg-gray-50 hover:border-gray-200'
                                         }`}
                                     >
-                                        {pkg.category}
+                                        {pkg.name}
                                     </button>
                                 );
                             })}
@@ -348,7 +348,7 @@ export function MenuCatalog() {
                                 </div>
                                 <p className="font-bold text-lg text-slate-500">Jadwal belum tersedia</p>
                                 <p className="text-sm mt-2 leading-relaxed">
-                                    Jadwal menu untuk paket <strong>{activePackage?.category}</strong> belum diatur oleh admin.
+                                    Jadwal menu untuk paket <strong>{activePackage?.name}</strong> belum diatur oleh admin.
                                 </p>
                             </div>
                         )}

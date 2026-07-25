@@ -12,7 +12,7 @@ const mealTypesList = ["Lunch", "Dinner", "Lunch & Dinner"];
 interface PackageData {
     _id: string;
     slug: string;
-    category: string;
+    name: string;
     description: string;
     pricing: Record<string, Record<string, { normal: string; promo: string }>>;
 }
@@ -50,7 +50,7 @@ export function PricingSection() {
         if (!pricing) return;
 
         addItem({
-            package_name: pkg.category,
+            package_name: pkg.name,
             package_slug: pkg.slug,
             duration: selectedDay,
             meal_type: selectedMeal,
@@ -196,7 +196,7 @@ export function PricingSection() {
                                         <div key={pkg._id} className="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl border border-gray-100 flex flex-col relative group transition-all duration-300">
 
                                             <div className="mb-5">
-                                                <h3 className="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight">{pkg.category}</h3>
+                                                <h3 className="text-xl md:text-2xl font-extrabold text-slate-800 tracking-tight">{pkg.name}</h3>
                                             </div>
                                             
                                             <p className="text-sm text-slate-500 mb-6 flex-grow leading-relaxed font-medium">

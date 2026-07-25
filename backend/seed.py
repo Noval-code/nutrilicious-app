@@ -121,7 +121,7 @@ def seed_packages():
     packages = [
         {
             "slug": "low-carbs",
-            "category": "Low Carbs",
+            "name": "Low Carbs",
             "description": "Diet rendah karbohidrat yang kaya akan serat. Pilihan cerdas untuk program weight loss intensif dan sehat.",
             "pricing": {
                 "5 Hari": {
@@ -148,7 +148,7 @@ def seed_packages():
         },
         {
             "slug": "healthy-food",
-            "category": "Healthy Food",
+            "name": "Healthy Food",
             "description": "Pola makan seimbang dengan bahan berkualitas dan bernutrisi tinggi. Semakin mudah untuk menjaga pola hidup sehat.",
             "pricing": {
                 "5 Hari": {
@@ -175,7 +175,7 @@ def seed_packages():
         },
         {
             "slug": "muscle-gain",
-            "category": "Muscle Gain",
+            "name": "Muscle Gain",
             "description": "Tinggi protein dan kalori optimal untuk mendukung hipertrofi otot dan recovery setelah latihan beban.",
             "pricing": {
                 "5 Hari": {

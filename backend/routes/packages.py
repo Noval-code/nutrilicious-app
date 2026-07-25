@@ -39,14 +39,14 @@ def create_package():
     db = get_db()
     data = request.get_json()
     
-    required_fields = ['category', 'description', 'pricing']
+    required_fields = ['name', 'description', 'pricing']
     for field in required_fields:
         if field not in data:
             return jsonify({'error': f'Field "{field}" wajib diisi'}), 400
     
     pkg = {
-        'slug': data.get('slug', data['category'].lower().replace(' ', '-')),
-        'category': data['category'],
+        'slug': data.get('slug', data['name'].lower().replace(' ', '-')),
+        'name': data['name'],
         'description': data['description'],
         'pricing': data['pricing'],
     }
@@ -64,7 +64,7 @@ def update_package(package_id):
     data = request.get_json()
     
     update_data = {}
-    for field in ['slug', 'category', 'description', 'pricing']:
+    for field in ['slug', 'name', 'description', 'pricing']:
         if field in data:
             update_data[field] = data[field]
     

@@ -48,7 +48,7 @@ interface Schedule {
 interface PackageData {
   _id: string;
   slug: string;
-  category: string;
+  name: string;
   description: string;
 }
 
@@ -234,7 +234,7 @@ export default function MenuSchedulesPage() {
                   <div className="flex items-center gap-3">
                     <div className="flex-1 min-w-0">
                       <h3 className={`font-bold text-sm ${isSelected ? 'text-[#114C2A]' : 'text-slate-800'}`}>
-                        {pkg.category}
+                        {pkg.name}
                       </h3>
                       <p className="text-xs text-slate-400 truncate">{pkg.description}</p>
                     </div>
@@ -285,7 +285,7 @@ export default function MenuSchedulesPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div>
-                        <h2 className="text-lg font-extrabold text-white">{selectedPkg?.category}</h2>
+                        <h2 className="text-lg font-extrabold text-white">{selectedPkg?.name}</h2>
                         <p className="text-white/60 text-xs">Jadwal menu 6 hari (Senin–Sabtu)</p>
                       </div>
                     </div>
@@ -386,7 +386,7 @@ export default function MenuSchedulesPage() {
                 {/* Footer: Save Button */}
                 <div className="p-6 border-t border-gray-100 bg-slate-50 flex items-center justify-between">
                   <p className="text-xs text-slate-400">
-                    Template ini berlaku untuk semua durasi paket <strong>{selectedPkg?.category}</strong>.
+                    Template ini berlaku untuk semua durasi paket <strong>{selectedPkg?.name}</strong>.
                   </p>
                   <button
                     onClick={handleSave}

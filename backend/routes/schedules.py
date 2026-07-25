@@ -159,7 +159,7 @@ def save_schedule(package_id):
             '$set': {
                 'package_id': ObjectId(package_id),
                 'package_slug': pkg.get('slug', ''),
-                'package_name': pkg.get('category', ''),
+                'package_name': pkg.get('name', ''),
                 'schedule': clean_schedule,
                 'updated_at': now,
             },

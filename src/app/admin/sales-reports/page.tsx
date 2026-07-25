@@ -24,7 +24,7 @@ const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 interface PackageOption {
   _id: string;
   slug: string;
-  category: string;
+  name: string;
 }
 
 interface DailySales {
@@ -401,7 +401,7 @@ export default function SalesReportPage() {
                 <option value="all">Semua Paket</option>
                 {packages.map((pkg) => (
                   <option key={pkg._id} value={pkg.slug}>
-                    {pkg.category}
+                    {pkg.name}
                   </option>
                 ))}
               </select>
