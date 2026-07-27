@@ -165,9 +165,6 @@ export function RAGChatbotWidget() {
                 </Avatar>
                 <div>
                   <CardTitle className="text-sm font-bold leading-tight">NutriBot Asisten</CardTitle>
-                  <p className="text-[10px] text-primary-foreground/80 mt-0.5 opacity-90">
-                    Online · Ditenagai Gemini AI
-                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -196,7 +193,7 @@ export function RAGChatbotWidget() {
               <div ref={scrollRef} className="h-full overflow-y-auto p-4">
                 <div className="flex flex-col gap-3 pb-2">
                   {/* Welcome message */}
-                  <BotBubble content={"Halo! Saya NutriBot 🤖\n\nSaya asisten gizi cerdas Nutrilicious Food. Tanya saya soal menu, paket langganan, rekomendasi diet, atau alergi makanan!"} />
+                  <BotBubble content={"Halo! Saya NutriBot 🤖"} />
 
                   {/* Quick replies */}
                   {showQuickReplies && messages.length === 0 && (
