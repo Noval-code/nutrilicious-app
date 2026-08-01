@@ -278,13 +278,13 @@ export function MenuCatalog() {
                                                 <>
                                                     {/* Menu Image */}
                                                     {slot.menu.image_url && (
-                                                        <div className="relative w-full h-40 rounded-2xl overflow-hidden mb-4 z-10">
+                                                        <div className="relative w-full aspect-square rounded-2xl overflow-hidden mb-4 z-10">
                                                             <Image
                                                                 src={slot.menu.image_url}
                                                                 alt={slot.menu.title}
                                                                 fill
                                                                 className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                                                sizes="(max-width: 768px) 100vw, 33vw"
+                                                                sizes="(max-width: 768px) 100vw, 50vw"
                                                             />
                                                         </div>
                                                     )}
