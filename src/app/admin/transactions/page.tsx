@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, Eye, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, X, Clock, CheckCircle2, Truck, XCircle, Loader2, Receipt, ArrowUpDown, CreditCard, Download } from 'lucide-react';
+import { Search, Filter, Eye, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, X, Clock, CheckCircle2, Truck, XCircle, Loader2, Receipt, ArrowUpDown, CreditCard, Download, Calendar, Package } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
@@ -44,6 +44,12 @@ interface Stats {
   total_revenue: number;
 }
 
+interface PackageOption {
+  _id: string;
+  slug: string;
+  name: string;
+}
+
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   pending_payment: { label: 'Belum Bayar', color: 'text-orange-600', bg: 'bg-orange-50', icon: CreditCard },
   pending:    { label: 'Menunggu',   color: 'text-amber-600',   bg: 'bg-amber-50',   icon: Clock },
@@ -68,6 +74,10 @@ export default function TransactionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedPackage, setSelectedPackage] = useState('all');
+  const [packages, setPackages] = useState<PackageOption[]>([]);
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -86,10 +96,26 @@ export default function TransactionsPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Ambil daftar paket untuk dropdown filter
+  useEffect(() => {
+    async function fetchPackages() {
+      try {
+        const res = await fetch(`${API_URL}/packages/`);
+        if (res.ok) {
+          const data = await res.json();
+          setPackages(data);
+        }
+      } catch (err) {
+        console.error('Gagal mengambil daftar paket:', err);
+      }
+    }
+    fetchPackages();
+  }, []);
+
   // Reset ke halaman 1 saat filter/sort berubah
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterStatus, sortOrder]);
+  }, [filterStatus, startDate, endDate, selectedPackage, sortOrder]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -99,6 +125,9 @@ export default function TransactionsPage() {
       params.append('limit', String(ITEMS_PER_PAGE));
       if (debouncedSearch) params.append('search', debouncedSearch);
       if (filterStatus && filterStatus !== 'all') params.append('status', filterStatus);
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      if (selectedPackage && selectedPackage !== 'all') params.append('package_slug', selectedPackage);
       params.append('sort', sortOrder);
 
       const [txnRes, statsRes] = await Promise.all([
@@ -117,7 +146,7 @@ export default function TransactionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, debouncedSearch, filterStatus, sortOrder]);
+  }, [currentPage, debouncedSearch, filterStatus, startDate, endDate, selectedPackage, sortOrder]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -153,6 +182,9 @@ export default function TransactionsPage() {
       params.append('no_limit', 'true');
       if (debouncedSearch) params.append('search', debouncedSearch);
       if (filterStatus && filterStatus !== 'all') params.append('status', filterStatus);
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      if (selectedPackage && selectedPackage !== 'all') params.append('package_slug', selectedPackage);
       params.append('sort', sortOrder);
 
       const res = await fetch(`${API_URL}/transactions/?${params.toString()}`);
@@ -207,7 +239,8 @@ export default function TransactionsPage() {
       });
       worksheet['!cols'] = maxLens;
 
-      XLSX.writeFile(workbook, `Data_Pengantaran_Transaksi_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      const dateRange = startDate && endDate ? `_${startDate}_sd_${endDate}` : (startDate || endDate ? `_${startDate || endDate}` : '');
+      XLSX.writeFile(workbook, `Data_Pengantaran_Transaksi_${new Date().toISOString().slice(0, 10)}${dateRange}.xlsx`);
     } catch (err) {
       console.error(err);
       alert("Gagal mengekspor data transaksi");
@@ -329,6 +362,42 @@ export default function TransactionsPage() {
                 <option value="processing">Diproses</option>
                 <option value="delivered">Terkirim</option>
                 <option value="cancelled">Dibatalkan</option>
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+            </div>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-white border border-gray-200 rounded-lg pl-9 pr-2 py-2 text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#F9A826] cursor-pointer"
+                title="Tanggal mulai"
+              />
+            </div>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-white border border-gray-200 rounded-lg pl-9 pr-2 py-2 text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#F9A826] cursor-pointer"
+                title="Tanggal akhir"
+              />
+            </div>
+            <div className="relative">
+              <Package className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+              <select
+                value={selectedPackage}
+                onChange={(e) => setSelectedPackage(e.target.value)}
+                className="bg-white border border-gray-200 rounded-lg pl-9 pr-8 py-2 text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#F9A826] appearance-none cursor-pointer"
+              >
+                <option value="all">Semua Paket</option>
+                {packages.map((pkg) => (
+                  <option key={pkg._id} value={pkg.slug}>
+                    {pkg.name}
+                  </option>
+                ))}
               </select>
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
             </div>
