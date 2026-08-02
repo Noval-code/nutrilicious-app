@@ -324,7 +324,7 @@ export default function TransactionsPage() {
               <Receipt className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white/70">Total Pendapatan (Aktif)</p>
+              <p className="text-sm font-semibold text-white/70">Total Pendapatan</p>
               <p className="text-2xl font-black tracking-tight">{formatCurrency(stats.total_revenue)}</p>
             </div>
           </div>
