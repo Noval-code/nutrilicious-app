@@ -66,7 +66,6 @@ function PredictionWidget() {
           </div>
           <div>
             <h3 className="text-lg font-bold text-slate-800">Prediksi Minggu Depan</h3>
-            <p className="text-xs font-semibold text-slate-400">{forecast.week_label}</p>
           </div>
         </div>
         <Link href="/admin/prediction" className="text-sm font-bold text-[#114C2A] bg-[#f2f6f4] px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-[#e2eae4] transition-colors">
