@@ -201,7 +201,7 @@ export default function AdminDashboard() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
         <h1 className="text-3xl font-extrabold text-[#114C2A] tracking-tight">Dashboard Overview</h1>
-        <p className="text-slate-500 mt-1">Ringkasan performa sistem katering dan inventaris Anda hari ini.</p>
+        <p className="text-slate-500 mt-1">Ringkasan performa sistem katering Anda hari ini.</p>
       </div>
 
       {/* Stats Grid */}
