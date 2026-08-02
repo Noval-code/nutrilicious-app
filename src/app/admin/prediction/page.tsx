@@ -470,7 +470,7 @@ export default function PredictionPage() {
             <h1 className="text-3xl font-extrabold text-[#114C2A] tracking-tight">Prediksi Penjualan</h1>
           </div>
           <p className="text-slate-500 mt-1">
-            Prediksi jumlah pesanan per paket menggunakan algoritma <span className="font-bold text-[#114C2A]">Random Forest</span>
+            Prediksi jumlah pesanan per paket.
           </p>
         </div>
 

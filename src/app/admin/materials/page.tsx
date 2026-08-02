@@ -154,7 +154,7 @@ export default function MaterialsPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-[#114C2A] tracking-tight">Stok Bahan Baku</h1>
-          <p className="text-slate-500 mt-1">Kelola inventaris dapur untuk integrasi akurasi perhitungan Gramasi &amp; Random Forest.</p>
+          <p className="text-slate-500 mt-1">Kelola inventaris dapur.</p>
         </div>
         
         <button 
