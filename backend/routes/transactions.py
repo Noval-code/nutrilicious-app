@@ -16,6 +16,11 @@ from routes.stock_deduction import deduct_stock_for_transaction, restore_stock_f
 
 transactions_bp = Blueprint('transactions', __name__)
 
+# Alur route transactions:
+# Checkout user membuat dokumen transaksi dan invoice Xendit. Setelah pembayaran
+# dikonfirmasi lewat webhook, polling, atau update admin, status transaksi
+# disinkronkan dan stok bahan baku dapat otomatis dikurangi/dikembalikan.
+
 
 def get_xendit_client():
     """Initialize Xendit API client with secret key from config"""
@@ -27,6 +32,7 @@ def get_xendit_client():
 
 
 def normalize_xendit_status(status):
+    """Samakan bentuk status Xendit agar mudah dipetakan ke status internal."""
     value = getattr(status, 'value', status)
     value = str(value or '').upper()
     if '.' in value:
@@ -86,6 +92,32 @@ def get_transactions():
             {'customer_phone': {'$regex': search, '$options': 'i'}},
         ]
     
+    # Filter rentang tanggal
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    
+    date_query = {}
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0)
+            date_query['$gte'] = start_date
+        except ValueError:
+            pass
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            date_query['$lte'] = end_date
+        except ValueError:
+            pass
+    
+    if date_query:
+        query['created_at'] = date_query
+    
+    # Filter paket langganan
+    package_slug = request.args.get('package_slug')
+    if package_slug and package_slug != 'all':
+        query['items.package_slug'] = package_slug
+    
     # Sort order
     sort_order = -1  # default: terbaru dulu
     if request.args.get('sort') == 'asc':
@@ -95,6 +127,7 @@ def get_transactions():
     total = db['transactions'].count_documents(query)
     
     if no_limit:
+        # no_limit dipakai halaman/report yang perlu mengambil semua data cocok.
         transactions = list(
             db['transactions'].find(query)
             .sort('created_at', sort_order)
@@ -167,6 +200,7 @@ def create_transaction():
     total = 0
     items = []
     for item in data['items']:
+        # Harga dari frontend dapat berbentuk string rupiah dengan titik pemisah.
         price = int(str(item.get('price', '0')).replace('.', ''))
         qty = int(item.get('quantity', 1))
         subtotal = price * qty
@@ -211,6 +245,8 @@ def create_transaction():
     
     # --- Buat Xendit Invoice ---
     try:
+        # Setelah transaksi lokal tersimpan, backend membuat invoice pembayaran.
+        # Jika Xendit gagal, transaksi tetap ada agar admin masih bisa melihat order.
         xendit_client = get_xendit_client()
         invoice_api = InvoiceApi(xendit_client)
         
@@ -316,6 +352,7 @@ def xendit_webhook():
     
     new_status = status_map.get(status)
     if not new_status:
+        # Status seperti PENDING cukup diakui agar Xendit tidak mengulang callback.
         # Status lain (PENDING, dll) - tidak perlu update
         return jsonify({'message': f'Status {status} acknowledged'}), 200
     
@@ -339,6 +376,7 @@ def xendit_webhook():
     
     # Auto-deduct stok bahan baku saat pembayaran dikonfirmasi
     if new_status == 'confirmed':
+        # Deduct dilakukan sekali saja dengan flag stock_deducted.
         txn = db['transactions'].find_one({'order_id': external_id})
         if txn and not txn.get('stock_deducted'):
             deduct_result = deduct_stock_for_transaction(db, txn)
@@ -397,12 +435,14 @@ def update_transaction_status(transaction_id):
     
     # Auto-deduct stok saat admin mengubah status ke confirmed
     if new_status == 'confirmed' and not txn_before.get('stock_deducted'):
+        # Jalur manual admin tetap memicu deduct agar stok konsisten.
         txn_updated = db['transactions'].find_one({'_id': ObjectId(transaction_id)})
         deduct_result = deduct_stock_for_transaction(db, txn_updated)
         print(f"[STOCK] Manual confirm deduct: {deduct_result['deducted_count']} bahan dikurangi")
     
     # Restore stok saat order yang sudah dikonfirmasi dibatalkan
     if new_status == 'cancelled' and txn_before.get('stock_deducted'):
+        # Jika order dibatalkan setelah stok dikurangi, stok dikembalikan.
         restore_result = restore_stock_for_transaction(db, txn_before)
         print(f"[STOCK] Cancel restore: {restore_result['restored_count']} bahan dikembalikan")
     
@@ -436,6 +476,7 @@ def check_payment_status(order_id):
     # Jika masih pending_payment dan punya xendit_invoice_id, cek langsung ke Xendit
     if txn.get('status') == 'pending_payment' and txn.get('xendit_invoice_id'):
         try:
+            # Polling ini menjadi fallback jika webhook Xendit belum diterima backend.
             xendit_client = get_xendit_client()
             invoice_api = InvoiceApi(xendit_client)
             invoice = invoice_api.get_invoice_by_id(invoice_id=txn['xendit_invoice_id'])
@@ -546,6 +587,7 @@ def get_sales_report():
     # Filter status
     status = request.args.get('status', 'active')
     if status == 'active':
+        # Default report hanya menghitung transaksi yang dianggap menghasilkan penjualan.
         # Default: hanya menghitung pesanan yang sukses/aktif (dikonfirmasi, diproses, terkirim)
         query['status'] = {'$in': ['confirmed', 'processing', 'delivered']}
     elif status != 'all':
