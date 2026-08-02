@@ -428,7 +428,7 @@ export default function PredictionPage() {
       const data = await res.json();
 
       if (res.ok) {
-        setTrainMessage({ type: 'success', text: `Model berhasil di-training! MAE: ${data.metrics.mae}, RMSE: ${data.metrics.rmse}` });
+        setTrainMessage({ type: 'success', text: 'Prediksi berhasil dilakukan!' });
         // Refresh all data
         await fetchAllData();
       } else {
