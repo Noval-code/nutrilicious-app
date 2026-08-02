@@ -89,7 +89,7 @@ function PredictionWidget() {
         })}
       </div>
 
-      {/* Metrics row */}
+      {/* Metrics row — dikomentari, tidak ditampilkan
       <div className="flex items-center gap-3 flex-wrap">
         <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
           MAE: {metrics.mae.toFixed(2)}
@@ -101,6 +101,7 @@ function PredictionWidget() {
           R²: {(metrics.r2 * 100).toFixed(1)}%
         </span>
       </div>
+      */}
     </div>
   );
 }
