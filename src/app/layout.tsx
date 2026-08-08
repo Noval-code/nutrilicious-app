@@ -12,6 +12,14 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 export const metadata: Metadata = {
   title: "Nutrilicious Food | Makan Sehat Hidup Lebih Kuat",
   description: "Platform katering sehat dengan sistem prediksi AI.",
+  icons: {
+    icon: [
+      {
+        url: "https://res.cloudinary.com/daxxzeeyr/image/upload/v1786175841/icon-logo_dxmcfi.svg",
+        type: "image/svg+xml",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
