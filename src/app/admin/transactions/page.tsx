@@ -32,6 +32,13 @@ interface Transaction {
   customer_notes: string;
   items: TransactionItem[];
   total: number;
+  payment_option?: 'full' | 'dp';
+  dp_percentage?: number;
+  dp_amount?: number;
+  remaining_amount?: number;
+  pay_amount?: number;
+  paid_amount?: number;
+  is_remaining_paid?: boolean;
   status: string;
   payment_method: string;
   payment_status: string;
@@ -179,6 +186,23 @@ export default function TransactionsPage() {
     }
   };
 
+  const handleMarkRemainingPaid = async (id: string) => {
+    if (!confirm('Tandai sisa tagihan DP sudah lunas?')) return;
+    setUpdatingStatus(true);
+    try {
+      const res = await fetch(`${API_URL}/transactions/${id}/remaining-paid`, { method: 'PUT' });
+      if (res.ok) {
+        const updated = await res.json();
+        setTransactions(prev => prev.map(t => t._id === id ? updated : t));
+        if (selectedTxn?._id === id) setSelectedTxn(updated);
+      }
+    } catch (err) {
+      console.error('Gagal menandai sisa lunas:', err);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   const handleExportExcel = async () => {
     if (transactions.length === 0) return;
     setIsExporting(true);
@@ -228,6 +252,10 @@ export default function TransactionsPage() {
           'Catatan': txn.customer_notes || '-',
           'Item Pesanan': itemsString,
           'Total Pembayaran': txn.total,
+          'Opsi Pembayaran': txn.payment_option === 'dp' ? `DP ${txn.dp_percentage}%` : 'Full',
+          'Dibayar Sekarang': txn.pay_amount || txn.total,
+          'Sisa Tagihan': txn.remaining_amount || 0,
+          'Status Sisa Tagihan': txn.payment_option === 'dp' ? (txn.is_remaining_paid ? 'Lunas' : 'Belum Lunas') : '-',
           'Status Pesanan': statusLabel,
           'Metode Pembayaran': txn.payment_method || '-',
           'Status Pembayaran': txn.payment_status || '-'
@@ -472,6 +500,7 @@ export default function TransactionsPage() {
                       </td>
                       <td className="p-4">
                         <span className="font-bold text-slate-800 text-sm">{formatCurrency(txn.total)}</span>
+                        {txn.payment_option === 'dp' && <p className="text-[10px] font-bold text-amber-600">DP {txn.dp_percentage}%</p>}
                       </td>
                       <td className="p-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${cfg.color} ${cfg.bg}`}>
@@ -664,6 +693,31 @@ export default function TransactionsPage() {
                 <span className="font-bold text-sm text-white/70">Total Pembayaran</span>
                 <span className="text-xl font-black tracking-tight">{formatCurrency(selectedTxn.total)}</span>
               </div>
+
+              {selectedTxn.payment_option === 'dp' && (
+                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 space-y-3">
+                  <h3 className="text-xs font-bold text-amber-700 uppercase tracking-wider">Pembayaran DP</h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-[11px] font-semibold text-amber-600">DP {selectedTxn.dp_percentage}%</p>
+                      <p className="font-black text-amber-800">{formatCurrency(selectedTxn.dp_amount || selectedTxn.pay_amount || 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-amber-600">Sisa Tagihan</p>
+                      <p className="font-black text-amber-800">{selectedTxn.is_remaining_paid ? 'Lunas' : formatCurrency(selectedTxn.remaining_amount || 0)}</p>
+                    </div>
+                  </div>
+                  {!selectedTxn.is_remaining_paid && (
+                    <button
+                      onClick={() => handleMarkRemainingPaid(selectedTxn._id)}
+                      disabled={updatingStatus}
+                      className="w-full bg-amber-600 text-white py-2.5 rounded-xl font-bold hover:bg-amber-700 transition-colors disabled:opacity-50"
+                    >
+                      Tandai Sisa Lunas
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Meta */}
               <div className="grid grid-cols-2 gap-3 text-xs">

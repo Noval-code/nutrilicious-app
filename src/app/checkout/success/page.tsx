@@ -11,6 +11,12 @@ interface Transaction {
   status: string;
   payment_status: string;
   total: number;
+  payment_option?: 'full' | 'dp';
+  dp_percentage?: number;
+  dp_amount?: number;
+  remaining_amount?: number;
+  pay_amount?: number;
+  is_remaining_paid?: boolean;
   xendit_invoice_url?: string;
   items: Array<{
     type?: 'package' | 'menu';
@@ -200,6 +206,18 @@ function CheckoutSuccessContent() {
                 <span className="font-bold text-slate-700">Total</span>
                 <span className="text-xl font-black text-[#114C2A]">Rp{formatRupiah(txn.total)}</span>
               </div>
+              {txn.payment_option === 'dp' && (
+                <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 space-y-1 text-sm">
+                  <div className="flex justify-between font-bold text-amber-800">
+                    <span>DP {txn.dp_percentage}% dibayar</span>
+                    <span>Rp{formatRupiah(txn.dp_amount || txn.pay_amount || 0)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-amber-700">
+                    <span>Sisa tagihan</span>
+                    <span>{txn.is_remaining_paid ? 'Lunas' : `Rp${formatRupiah(txn.remaining_amount || 0)}`}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

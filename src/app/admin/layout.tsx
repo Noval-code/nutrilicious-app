@@ -17,6 +17,7 @@ import {
   Loader2,
   BarChart3,
   Tags,
+  CreditCard,
 } from 'lucide-react';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
@@ -176,6 +177,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Jadwal Menu', href: '/admin/menu-schedules', icon: CalendarDays },
     { name: 'Stok Bahan Baku', href: '/admin/materials', icon: Beef },
     { name: 'Riwayat Transaksi', href: '/admin/transactions', icon: Receipt },
+    { name: 'Pembayaran', href: '/admin/payment-settings', icon: CreditCard },
     { name: 'Prediksi Penjualan', href: '/admin/prediction', icon: TrendingUp },
     { name: 'Laporan Penjualan', href: '/admin/sales-reports', icon: BarChart3 },
   ];

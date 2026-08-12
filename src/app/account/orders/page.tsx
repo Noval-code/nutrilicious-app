@@ -43,6 +43,12 @@ interface Order {
   order_id: string;
   items: OrderItem[];
   total: number;
+  payment_option?: 'full' | 'dp';
+  dp_percentage?: number;
+  dp_amount?: number;
+  remaining_amount?: number;
+  pay_amount?: number;
+  is_remaining_paid?: boolean;
   status: string;
   payment_method: string;
   payment_status: string;
@@ -145,6 +151,7 @@ function OrderCard({ order }: { order: Order }) {
         <div className="flex items-center gap-3">
           <div className="text-right">
             <p className="font-black text-slate-800 text-sm">{formatCurrency(order.total)}</p>
+            {order.payment_option === 'dp' && <p className="text-[10px] font-bold text-amber-600">DP {order.dp_percentage}%</p>}
             <span className={`inline-flex items-center gap-1 text-[11px] font-bold ${cfg.color}`}>
               <StatusIcon className="w-3 h-3" />
               {cfg.label}
@@ -242,6 +249,19 @@ function OrderCard({ order }: { order: Order }) {
                 Bayar Sekarang
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
+            </div>
+          )}
+
+          {order.payment_option === 'dp' && (
+            <div className="px-5 py-3 bg-amber-50/60 border-t border-amber-100 text-sm space-y-1">
+              <div className="flex justify-between font-bold text-amber-800">
+                <span>DP dibayar</span>
+                <span>{formatCurrency(order.dp_amount || order.pay_amount || 0)}</span>
+              </div>
+              <div className="flex justify-between font-semibold text-amber-700">
+                <span>Sisa tagihan</span>
+                <span>{order.is_remaining_paid ? 'Lunas' : formatCurrency(order.remaining_amount || 0)}</span>
+              </div>
             </div>
           )}
 

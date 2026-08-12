@@ -40,6 +40,14 @@ def normalize_xendit_status(status):
     return value
 
 
+def clamp_dp_percentage(value):
+    try:
+        percentage = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return max(1, min(99, percentage))
+
+
 def serialize_transaction(txn):
     """Convert MongoDB document to JSON-serializable dict"""
     txn['_id'] = str(txn['_id'])
@@ -223,6 +231,20 @@ def create_transaction():
             'quantity': qty,
             'subtotal': subtotal,
         })
+
+    payment_option = data.get('payment_option', 'full')
+    dp_percentage = 0
+    dp_amount = 0
+    remaining_amount = 0
+    pay_amount = total
+
+    if payment_option == 'dp':
+        dp_percentage = clamp_dp_percentage(data.get('dp_percentage', 50))
+        dp_amount = round(total * dp_percentage / 100)
+        remaining_amount = total - dp_amount
+        pay_amount = dp_amount
+    else:
+        payment_option = 'full'
     
     now = datetime.now()
     order_id = generate_order_id(db)
@@ -238,6 +260,12 @@ def create_transaction():
         'customer_notes': data.get('customer_notes', ''),
         'items': items,
         'total': total,
+        'payment_option': payment_option,
+        'dp_percentage': dp_percentage,
+        'dp_amount': dp_amount,
+        'remaining_amount': remaining_amount,
+        'pay_amount': pay_amount,
+        'is_remaining_paid': remaining_amount == 0,
         'status': 'pending_payment',  # Status awal: menunggu pembayaran
         'payment_method': '',  # Akan diisi oleh Xendit setelah user memilih
         'payment_status': 'PENDING',
@@ -261,26 +289,33 @@ def create_transaction():
         
         # Buat items untuk invoice
         invoice_items = []
-        for item in items:
-            if item.get('type') == 'menu':
-                detail = item.get('category', 'Menu')
-                if item.get('order_type') == 'event':
-                    detail = f"Acara {item.get('event_date', '')} {item.get('event_time', '')}".strip()
-                item_name = f"{item['name']} ({detail})"
-            else:
-                item_name = f"{item['package_name']} ({item['duration']} - {item['meal_type']})"
+        if payment_option == 'dp':
             invoice_items.append(InvoiceItem(
-                name=item_name,
-                quantity=float(item['quantity']),
-                price=float(item['price']),
+                name=f"DP {dp_percentage}% Nutrilicious - {order_id}",
+                quantity=1.0,
+                price=float(pay_amount),
             ))
+        else:
+            for item in items:
+                if item.get('type') == 'menu':
+                    detail = item.get('category', 'Menu')
+                    if item.get('order_type') == 'event':
+                        detail = f"Acara {item.get('event_date', '')} {item.get('event_time', '')}".strip()
+                    item_name = f"{item['name']} ({detail})"
+                else:
+                    item_name = f"{item['package_name']} ({item['duration']} - {item['meal_type']})"
+                invoice_items.append(InvoiceItem(
+                    name=item_name,
+                    quantity=float(item['quantity']),
+                    price=float(item['price']),
+                ))
         
         # Frontend URL untuk redirect setelah bayar
         frontend_url = current_app.config.get('FRONTEND_URL', 'http://localhost:3000')
         
         invoice_request = CreateInvoiceRequest(
             external_id=order_id,
-            amount=float(total),
+            amount=float(pay_amount),
             description=f"Pembayaran Nutrilicious - {order_id}",
             customer={
                 "given_names": data['customer_name'],
@@ -513,6 +548,10 @@ def check_payment_status(order_id):
                     'payment_status': xendit_status,
                     'updated_at': datetime.now(),
                 }
+
+                paid_amount = getattr(invoice, 'paid_amount', None)
+                if paid_amount:
+                    update_data['paid_amount'] = paid_amount
                 
                 # Ambil payment method jika ada
                 if hasattr(invoice, 'payment_method') and invoice.payment_method:
@@ -539,6 +578,29 @@ def check_payment_status(order_id):
             print(f"[WARNING] Gagal cek status Xendit untuk {order_id}: {e}")
     
     return jsonify(serialize_transaction(txn))
+
+
+@transactions_bp.route('/<transaction_id>/remaining-paid', methods=['PUT'])
+def mark_remaining_paid(transaction_id):
+    """Tandai sisa tagihan DP sudah lunas."""
+    db = get_db()
+    txn = db['transactions'].find_one({'_id': ObjectId(transaction_id)})
+    if not txn:
+        return jsonify({'error': 'Transaksi tidak ditemukan'}), 404
+    if txn.get('payment_option') != 'dp':
+        return jsonify({'error': 'Transaksi ini bukan pembayaran DP'}), 400
+
+    remaining_amount = int(txn.get('remaining_amount', 0) or 0)
+    paid_amount = int(txn.get('paid_amount', txn.get('pay_amount', 0)) or 0)
+    update_data = {
+        'is_remaining_paid': True,
+        'remaining_paid_at': datetime.now(),
+        'paid_amount': paid_amount + remaining_amount,
+        'updated_at': datetime.now(),
+    }
+    db['transactions'].update_one({'_id': ObjectId(transaction_id)}, {'$set': update_data})
+    updated = db['transactions'].find_one({'_id': ObjectId(transaction_id)})
+    return jsonify(serialize_transaction(updated))
 
 
 @transactions_bp.route('/stats', methods=['GET'])

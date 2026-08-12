@@ -10,6 +10,12 @@ import { MapPin, Edit3, ArrowLeft, CreditCard, Shield, Loader2 } from "lucide-re
 import Link from "next/link";
 import { toast } from "sonner";
 
+interface PaymentSettings {
+  dp_enabled: boolean;
+  package_dp_percentage: number;
+  event_dp_percentage: number;
+}
+
 function formatRupiah(num: number): string {
   return num.toLocaleString('id-ID');
 }
@@ -20,14 +26,42 @@ export default function CheckoutPage() {
   const router = useRouter();
 
   const [notes, setNotes] = useState("");
+  const [paymentOption, setPaymentOption] = useState<'full' | 'dp'>('full');
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+
+  const hasPackage = items.some(item => (item.type || 'package') === 'package');
+  const hasEvent = items.some(item => item.type === 'menu' && item.order_type === 'event');
+  const canUseDp = Boolean(paymentSettings?.dp_enabled && (hasPackage || hasEvent));
+  const dpPercentage = hasPackage
+    ? paymentSettings?.package_dp_percentage || 50
+    : paymentSettings?.event_dp_percentage || 30;
+  const dpAmount = Math.round(totalPrice * dpPercentage / 100);
+  const payNowAmount = paymentOption === 'dp' && canUseDp ? dpAmount : totalPrice;
+  const remainingAmount = paymentOption === 'dp' && canUseDp ? totalPrice - dpAmount : 0;
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
       router.push("/sign-in");
     }
   }, [isLoaded, isSignedIn, router]);
+
+  useEffect(() => {
+    async function fetchPaymentSettings() {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/payment-settings/`);
+        if (res.ok) setPaymentSettings(await res.json());
+      } catch {
+        setPaymentSettings(null);
+      }
+    }
+    fetchPaymentSettings();
+  }, []);
+
+  useEffect(() => {
+    if (!canUseDp && paymentOption === 'dp') setPaymentOption('full');
+  }, [canUseDp, paymentOption]);
 
   if (!isLoaded) {
     return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
@@ -49,6 +83,8 @@ export default function CheckoutPage() {
           customer_lat: userAddress.lat,
           customer_lng: userAddress.lng,
           customer_notes: notes,
+          payment_option: paymentOption === 'dp' && canUseDp ? 'dp' : 'full',
+          dp_percentage: paymentOption === 'dp' && canUseDp ? dpPercentage : 0,
           items: items.map(item => ({
             type: item.type || 'package',
             name: item.name || item.package_name,
@@ -199,13 +235,51 @@ export default function CheckoutPage() {
               />
             </div>
 
+            {canUseDp && (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-3 bg-slate-50 border-b border-slate-100">
+                  <h2 className="font-bold text-sm text-slate-700">Opsi Pembayaran</h2>
+                </div>
+                <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentOption('full')}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all ${paymentOption === 'full' ? 'border-[#114C2A] bg-[#114C2A]/5' : 'border-slate-100 hover:bg-slate-50'}`}
+                  >
+                    <p className="font-black text-slate-800">Bayar Full</p>
+                    <p className="text-xs text-slate-400 mt-1">Bayar seluruh total pesanan sekarang.</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentOption('dp')}
+                    className={`p-4 rounded-2xl border-2 text-left transition-all ${paymentOption === 'dp' ? 'border-[#114C2A] bg-[#114C2A]/5' : 'border-slate-100 hover:bg-slate-50'}`}
+                  >
+                    <p className="font-black text-slate-800">Bayar DP {dpPercentage}%</p>
+                    <p className="text-xs text-slate-400 mt-1">Sisa tagihan dibayarkan sesuai kesepakatan dengan admin.</p>
+                  </button>
+                </div>
+              </div>
+            )}
+
 
             {/* Total & Submit */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-bold text-slate-500">Total Pembayaran</span>
                 <span className="text-2xl font-black text-[#114C2A]">Rp{formatRupiah(totalPrice)}</span>
               </div>
+              {paymentOption === 'dp' && canUseDp && (
+                <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-4 space-y-1.5 text-sm">
+                  <div className="flex justify-between text-amber-800 font-bold">
+                    <span>Dibayar sekarang (DP {dpPercentage}%)</span>
+                    <span>Rp{formatRupiah(payNowAmount)}</span>
+                  </div>
+                  <div className="flex justify-between text-amber-700 font-semibold">
+                    <span>Sisa tagihan</span>
+                    <span>Rp{formatRupiah(remainingAmount)}</span>
+                  </div>
+                </div>
+              )}
               <Button
                 type="submit"
                 disabled={isLoading || !userAddress}
@@ -219,7 +293,7 @@ export default function CheckoutPage() {
                 ) : (
                   <span className="flex items-center gap-2">
                     <CreditCard className="w-4 h-4" />
-                    Bayar Sekarang
+                    {paymentOption === 'dp' && canUseDp ? `Bayar DP Rp${formatRupiah(payNowAmount)}` : 'Bayar Sekarang'}
                   </span>
                 )}
               </Button>
