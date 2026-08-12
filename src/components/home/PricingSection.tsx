@@ -6,7 +6,6 @@ import { useCart } from '@/components/cart/CartProvider';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 
-const daysList = ["5 Hari", "6 Hari", "10 Hari", "30 Hari"];
 const mealTypesList = ["Lunch", "Dinner", "Lunch & Dinner"];
 
 interface PackageData {
@@ -26,6 +25,8 @@ export function PricingSection() {
     const [addedItems, setAddedItems] = useState<Record<string, boolean>>({});
     const { addItem } = useCart();
 
+    const daysList = Array.from(new Set(packages.flatMap(pkg => Object.keys(pkg.pricing || {}))));
+
     const fetchPackages = useCallback(async () => {
         try {
             setLoading(true);
@@ -34,6 +35,8 @@ export function PricingSection() {
             if (!res.ok) throw new Error('Gagal memuat data paket');
             const data: PackageData[] = await res.json();
             setPackages(data);
+            const firstDuration = data.flatMap(pkg => Object.keys(pkg.pricing || {}))[0];
+            if (firstDuration) setSelectedDay(firstDuration);
         } catch (err: any) {
             setError(err.message || 'Terjadi kesalahan saat memuat data');
         } finally {
@@ -114,10 +117,10 @@ export function PricingSection() {
                               <h3 className="font-bold text-slate-800 text-lg mb-4 flex items-center gap-2 px-2">
                                   <CalendarDays className="w-5 h-5 text-[#F9A826]" />
                                   Pilih Durasi
-                              </h3>
+                               </h3>
                               {/* Horizontal scroll on mobile, vertical list on desktop */}
                               <div className="flex overflow-x-auto lg:flex-col gap-2 pb-2 lg:pb-0 scrollbar-hide -mx-2 px-2 lg:mx-0 lg:px-0">
-                                  {daysList.map(day => (
+                                   {daysList.map(day => (
                                       <button
                                           key={day}
                                           onClick={() => setSelectedDay(day)}
@@ -130,8 +133,13 @@ export function PricingSection() {
                                           {selectedDay === day && <CheckCircle2 className="w-4 h-4 mr-2 text-[#F9A826] hidden lg:block" />}
                                           <span className="whitespace-nowrap">{day}</span>
                                       </button>
-                                  ))}
-                              </div>
+                                   ))}
+                                  {daysList.length === 0 && (
+                                      <div className="text-sm text-slate-400 font-semibold px-2 py-3">
+                                          Belum ada durasi paket.
+                                      </div>
+                                  )}
+                               </div>
                          </div>
                     </div>
 
@@ -248,6 +256,13 @@ export function PricingSection() {
                                         </div>
                                     )
                                 })}
+
+                                {packages.length > 0 && !packages.some(pkg => pkg.pricing?.[selectedDay]?.[selectedMeal]) && (
+                                    <div className="col-span-full text-center py-16 text-slate-400">
+                                        <p className="font-bold text-lg">Harga belum tersedia</p>
+                                        <p className="text-sm mt-1">Belum ada paket dengan kombinasi {selectedDay} dan {selectedMeal}.</p>
+                                    </div>
+                                )}
 
                                 {packages.length === 0 && (
                                     <div className="col-span-full text-center py-16 text-slate-400">

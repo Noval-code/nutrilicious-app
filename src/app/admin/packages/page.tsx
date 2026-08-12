@@ -6,7 +6,7 @@ import { Plus, Edit2, Trash2, X, Save, CalendarDays, DollarSign, Loader2, AlertC
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 
-const DURATIONS = ["5 Hari", "6 Hari", "10 Hari", "30 Hari"];
+const DEFAULT_DURATIONS = ["5 Hari", "6 Hari", "10 Hari", "30 Hari"];
 const MEAL_TYPES = ["Lunch", "Dinner", "Lunch & Dinner"];
 
 
@@ -21,7 +21,7 @@ interface PackageData {
 
 const emptyPricing = (): PackageData['pricing'] => {
   const pricing: PackageData['pricing'] = {};
-  DURATIONS.forEach(dur => {
+  DEFAULT_DURATIONS.forEach(dur => {
     pricing[dur] = {};
     MEAL_TYPES.forEach(meal => {
       pricing[dur][meal] = { normal: '', promo: '' };
@@ -46,6 +46,7 @@ export default function PackagesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [newDuration, setNewDuration] = useState('');
 
 
 
@@ -81,28 +82,30 @@ export default function PackagesPage() {
     setFormData(emptyForm());
     setEditingId(null);
     setActiveTab('info');
+    setNewDuration('');
     setError(null);
     setIsFormOpen(true);
   };
 
   // Open form for editing
   const handleOpenEdit = (pkg: PackageData) => {
-    // Ensure pricing structure is complete (fill missing durations/meals)
-    const fullPricing = emptyPricing();
+    // Preserve custom durations while ensuring every duration has all meal types.
+    const fullPricing: PackageData['pricing'] = {};
     if (pkg.pricing) {
       Object.keys(pkg.pricing).forEach(dur => {
-        if (fullPricing[dur]) {
-          Object.keys(pkg.pricing[dur]).forEach(meal => {
-            if (fullPricing[dur][meal]) {
-              fullPricing[dur][meal] = pkg.pricing[dur][meal];
-            }
-          });
-        }
+        fullPricing[dur] = {};
+        MEAL_TYPES.forEach(meal => {
+          fullPricing[dur][meal] = pkg.pricing[dur]?.[meal] || { normal: '', promo: '' };
+        });
       });
+    }
+    if (Object.keys(fullPricing).length === 0) {
+      Object.assign(fullPricing, emptyPricing());
     }
     setFormData({ ...pkg, pricing: fullPricing });
     setEditingId(pkg._id || null);
     setActiveTab('info');
+    setNewDuration('');
     setError(null);
     setIsFormOpen(true);
   };
@@ -131,6 +134,42 @@ export default function PackagesPage() {
     }));
   };
 
+  const addDuration = () => {
+    const duration = newDuration.trim();
+    if (!duration) {
+      setError('Durasi wajib diisi');
+      return;
+    }
+    if (formData.pricing[duration]) {
+      setError('Durasi tersebut sudah ada');
+      return;
+    }
+
+    const durationPricing: Record<string, { normal: string; promo: string }> = {};
+    MEAL_TYPES.forEach(meal => {
+      durationPricing[meal] = { normal: '', promo: '' };
+    });
+
+    setFormData(prev => ({
+      ...prev,
+      pricing: {
+        ...prev.pricing,
+        [duration]: durationPricing,
+      },
+    }));
+    setNewDuration('');
+    setError(null);
+  };
+
+  const removeDuration = (duration: string) => {
+    if (!confirm(`Hapus durasi ${duration} dari paket ini?`)) return;
+    setFormData(prev => {
+      const nextPricing = { ...prev.pricing };
+      delete nextPricing[duration];
+      return { ...prev, pricing: nextPricing };
+    });
+  };
+
   // Save (create or update)
   const handleSave = async () => {
     // Validation
@@ -142,6 +181,11 @@ export default function PackagesPage() {
     if (!formData.description.trim()) {
       setError('Deskripsi wajib diisi');
       setActiveTab('info');
+      return;
+    }
+    if (Object.keys(formData.pricing).length === 0) {
+      setError('Minimal harus ada 1 durasi paket');
+      setActiveTab('pricing');
       return;
     }
 
@@ -330,13 +374,43 @@ export default function PackagesPage() {
               {activeTab === 'pricing' && (
                 <div className="space-y-6">
                   <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl text-sm font-medium">
-                    Atur kombinasi harga berdasarkan durasi hari dan waktu makan.
+                    Atur kombinasi harga berdasarkan durasi hari dan waktu makan. Admin dapat menambah durasi sesuai kebutuhan paket.
                   </div>
-                  
-                  {DURATIONS.map(duration => (
+
+                  <div className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="text"
+                      value={newDuration}
+                      onChange={(e) => setNewDuration(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addDuration();
+                        }
+                      }}
+                      className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#F9A826]"
+                      placeholder="Contoh: 7 Hari atau 14 Hari"
+                    />
+                    <button
+                      type="button"
+                      onClick={addDuration}
+                      className="bg-[#114C2A] text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#1a663a] transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" /> Tambah Durasi
+                    </button>
+                  </div>
+
+                  {Object.keys(formData.pricing).map(duration => (
                     <div key={duration} className="border border-gray-200 rounded-xl overflow-hidden">
-                      <div className="bg-slate-50 p-3 border-b border-gray-200 font-bold text-sm">
-                        Durasi {duration}
+                      <div className="bg-slate-50 p-3 border-b border-gray-200 font-bold text-sm flex items-center justify-between gap-3">
+                        <span>Durasi {duration}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeDuration(duration)}
+                          className="text-red-500 hover:bg-red-50 rounded-lg px-2 py-1 text-xs font-bold flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Hapus
+                        </button>
                       </div>
                       <div className="p-4 space-y-4">
                         {MEAL_TYPES.map((meal, idx) => (
