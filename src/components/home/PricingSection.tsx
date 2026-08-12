@@ -50,6 +50,9 @@ export function PricingSection() {
         if (!pricing) return;
 
         addItem({
+            type: 'package',
+            name: pkg.name,
+            slug: pkg.slug,
             package_name: pkg.name,
             package_slug: pkg.slug,
             duration: selectedDay,

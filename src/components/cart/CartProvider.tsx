@@ -8,7 +8,14 @@ import { AddressModal, UserAddress } from '@/components/address/AddressModal';
 import { toast } from 'sonner';
 
 export interface CartItem {
-  id: string; // unique key: slug-duration-meal
+  id: string;
+  type?: 'package' | 'menu';
+  name?: string;
+  slug?: string;
+  category?: string;
+  order_type?: 'regular' | 'event';
+  event_date?: string;
+  event_time?: string;
   package_name: string;
   package_slug: string;
   duration: string;
@@ -19,7 +26,7 @@ export interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (item: Omit<CartItem, 'id' | 'quantity'>) => void;
+  addItem: (item: Omit<CartItem, 'id' | 'quantity' | 'package_name' | 'package_slug'> & Partial<Pick<CartItem, 'package_name' | 'package_slug'>>, quantity?: number) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
@@ -34,8 +41,30 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-function generateItemId(slug: string, duration: string, mealType: string): string {
-  return `${slug}-${duration}-${mealType}`.replace(/\s+/g, '_').toLowerCase();
+type CartInput = Omit<CartItem, 'id' | 'quantity' | 'package_name' | 'package_slug'> & Partial<Pick<CartItem, 'package_name' | 'package_slug'>>;
+
+function normalizeCartItem(item: CartInput): Omit<CartItem, 'id' | 'quantity'> {
+  const type = item.type || 'package';
+  const name = item.name || item.package_name || '';
+  const slug = item.slug || item.package_slug || name;
+  return {
+    ...item,
+    type,
+    name,
+    slug,
+    package_name: item.package_name || name,
+    package_slug: item.package_slug || slug,
+    duration: item.duration || '',
+    meal_type: item.meal_type || '',
+    price: item.price,
+  };
+}
+
+function generateItemId(item: Omit<CartItem, 'id' | 'quantity'>): string {
+  return [item.type || 'package', item.package_slug, item.duration, item.meal_type, item.order_type || '', item.event_date || '', item.event_time || '']
+    .join('-')
+    .replace(/\s+/g, '_')
+    .toLowerCase();
 }
 
 function priceToNumber(price: string): number {
@@ -47,7 +76,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [userAddress, setUserAddress] = useState<UserAddress | null>(null);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
-  const [pendingItem, setPendingItem] = useState<Omit<CartItem, 'id' | 'quantity'> | null>(null);
+  const [pendingItem, setPendingItem] = useState<{ item: CartInput; quantity: number } | null>(null);
   const [hasFetchedProfile, setHasFetchedProfile] = useState(false);
 
   const { user, isLoaded, isSignedIn } = useAuth();
@@ -110,19 +139,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('nutrilicious_cart', JSON.stringify(items));
   }, [items, isHydrated]);
 
-  const doAddItem = useCallback((item: Omit<CartItem, 'id' | 'quantity'>) => {
-    const id = generateItemId(item.package_slug, item.duration, item.meal_type);
+  const doAddItem = useCallback((rawItem: CartInput, quantity = 1) => {
+    const item = normalizeCartItem(rawItem);
+    const id = generateItemId(item);
     setItems(prev => {
       const existing = prev.find(i => i.id === id);
       if (existing) {
-        return prev.map(i => i.id === id ? { ...i, quantity: i.quantity + 1 } : i);
+        return prev.map(i => i.id === id ? { ...i, quantity: i.quantity + quantity } : i);
       }
-      return [...prev, { ...item, id, quantity: 1 }];
+      return [...prev, { ...item, id, quantity }];
     });
     setIsCartOpen(true);
   }, []);
 
-  const addItem = useCallback((item: Omit<CartItem, 'id' | 'quantity'>) => {
+  const addItem = useCallback((item: CartInput, quantity = 1) => {
     // Guard 1: Harus login dulu
     if (!isSignedIn) {
       toast.error("Silakan login terlebih dahulu untuk menambahkan ke keranjang.");
@@ -133,13 +163,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     // Guard 2: Harus punya alamat
     if (!userAddress || !userAddress.address || userAddress.lat === null) {
       // Simpan item yang mau ditambahkan, lalu buka modal alamat
-      setPendingItem(item);
+      setPendingItem({ item, quantity });
       setIsAddressModalOpen(true);
       return;
     }
 
     // Semua sudah aman → tambahkan ke keranjang
-    doAddItem(item);
+    doAddItem(item, quantity);
   }, [isSignedIn, userAddress, doAddItem, router]);
 
   const removeItem = useCallback((id: string) => {
@@ -169,7 +199,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     // Jika ada item yang tertunda, tambahkan sekarang
     if (pendingItem) {
-      doAddItem(pendingItem);
+      doAddItem(pendingItem.item, pendingItem.quantity);
       setPendingItem(null);
     }
   }, [pendingItem, doAddItem]);

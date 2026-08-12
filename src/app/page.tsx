@@ -4,6 +4,7 @@ import { HeroSection } from "@/components/home/HeroSection";
 import { PricingSection } from "@/components/home/PricingSection";
 import { AboutSection } from "@/components/home/AboutSection";
 import { MenuCatalog } from "@/components/home/MenuCatalog";
+import { PortionMenuSection } from "@/components/home/PortionMenuSection";
 import dynamic from "next/dynamic";
 
 // Lazy-load floating widgets — mereka bukan critical path dan cukup berat
@@ -23,6 +24,7 @@ export default function Home() {
       <main className="flex-1">
         <HeroSection />
         <MenuCatalog />
+        <PortionMenuSection />
         <PricingSection />
         <AboutSection />
       </main>

@@ -24,6 +24,12 @@ import {
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ""}/api`;
 
 interface OrderItem {
+  type?: 'package' | 'menu';
+  name?: string;
+  category?: string;
+  order_type?: string;
+  event_date?: string;
+  event_time?: string;
   package_name: string;
   duration: string;
   meal_type: string;
@@ -199,17 +205,19 @@ function OrderCard({ order }: { order: Order }) {
             {order.items.map((item, idx) => (
               <div key={idx} className="px-5 py-3 flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm text-slate-800 truncate">{item.package_name || "Paket"}</p>
+                  <p className="font-bold text-sm text-slate-800 truncate">{item.name || item.package_name || "Paket"}</p>
                   <div className="flex gap-2 mt-0.5">
-                    {item.duration && (
-                      <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">
-                        {item.duration}
-                      </span>
-                    )}
-                    {item.meal_type && (
-                      <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">
-                        {item.meal_type}
-                      </span>
+                    {item.type === 'menu' ? (
+                      <>
+                        {item.category && <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{item.category}</span>}
+                        <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{item.order_type === 'event' ? 'Acara' : 'Coba Menu'}</span>
+                        {item.event_date && <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{item.event_date}{item.event_time ? ` ${item.event_time}` : ''}</span>}
+                      </>
+                    ) : (
+                      <>
+                        {item.duration && <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{item.duration}</span>}
+                        {item.meal_type && <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{item.meal_type}</span>}
+                      </>
                     )}
                   </div>
                 </div>

@@ -25,6 +25,16 @@ interface Menu {
   carbs?: number;
   fat?: number;
   sugar?: number;
+  price?: number;
+  is_orderable?: boolean;
+  is_available?: boolean;
+}
+
+interface MenuCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  is_active: boolean;
 }
 
 const UNIT_OPTIONS = [
@@ -43,10 +53,14 @@ const emptyForm = (): Menu => ({
   carbs: 0,
   fat: 0,
   sugar: 0,
+  price: 0,
+  is_orderable: false,
+  is_available: true,
 });
 
 export default function MenusPage() {
   const [menus, setMenus] = useState<Menu[]>([]);
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -62,6 +76,8 @@ export default function MenusPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+
+  const getCategoryLabel = (slug: string) => categories.find(cat => cat.slug === slug)?.name || slug;
 
   // Debounce search query agar tidak fetch setiap ketikan huruf
   useEffect(() => {
@@ -102,9 +118,21 @@ export default function MenusPage() {
     }
   }, [debouncedSearch, categoryFilter]);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/menu-categories/?active_only=true`);
+      if (!res.ok) throw new Error('Gagal memuat kategori menu');
+      const data: MenuCategory[] = await res.json();
+      setCategories(data);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  }, []);
+
   useEffect(() => {
+    fetchCategories();
     fetchMenus();
-  }, [fetchMenus]);
+  }, [fetchCategories, fetchMenus]);
 
   // Auto-hide success message
   useEffect(() => {
@@ -182,7 +210,7 @@ export default function MenusPage() {
 
   // Open form for creating
   const handleOpenCreate = () => {
-    setFormData(emptyForm());
+    setFormData({ ...emptyForm(), category: categories[0]?.slug || 'lunch' });
     setEditingId(null);
     setNewItem("");
     setNewItemQty("");
@@ -210,6 +238,9 @@ export default function MenusPage() {
       carbs: menu.carbs || 0,
       fat: menu.fat || 0,
       sugar: menu.sugar || 0,
+      price: menu.price || 0,
+      is_orderable: menu.is_orderable || false,
+      is_available: menu.is_available !== false,
     });
     setEditingId(menu._id || null);
     setNewItem("");
@@ -297,6 +328,9 @@ export default function MenusPage() {
         carbs: Number(formData.carbs) || 0,
         fat: Number(formData.fat) || 0,
         sugar: Number(formData.sugar) || 0,
+        price: Number(formData.price) || 0,
+        is_orderable: Boolean(formData.is_orderable),
+        is_available: Boolean(formData.is_available),
       };
 
       let res: Response;
@@ -399,8 +433,9 @@ export default function MenusPage() {
                 className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#F9A826]"
               >
                 <option value="all">Semua Kategori</option>
-                <option value="lunch">Lunch</option>
-                <option value="dinner">Dinner</option>
+                {categories.map(cat => (
+                  <option key={cat._id} value={cat.slug}>{cat.name}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -413,7 +448,8 @@ export default function MenusPage() {
                   <th className="p-4 font-bold w-16">Foto</th>
                   <th className="p-4 font-bold">Nama Menu</th>
                   <th className="p-4 font-bold">Kategori</th>
-                  <th className="p-4 font-bold">Bahan / Komposisi</th>
+                    <th className="p-4 font-bold">Bahan / Komposisi</th>
+                    <th className="p-4 font-bold">Harga Perporsi</th>
                   <th className="p-4 font-bold text-right">Aksi</th>
                 </tr>
               </thead>
@@ -441,7 +477,7 @@ export default function MenusPage() {
                       <p className="font-bold text-slate-800">{menu.title}</p>
                       <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[11px] font-semibold">
                         <span className="inline-flex items-center gap-0.5 bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md">
-                          🔥 {menu.calories || 0} kcal
+                          {menu.calories || 0} kcal
                         </span>
                         <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md">
                           P: {menu.protein || 0}g
@@ -460,9 +496,9 @@ export default function MenusPage() {
                     <td className="p-4">
                       <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold capitalize
                         ${menu.category === 'lunch' ? 'bg-blue-50 text-blue-600' : 
-                          'bg-indigo-50 text-indigo-600'}
+                          menu.category === 'dinner' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}
                       `}>
-                        {menu.category}
+                        {getCategoryLabel(menu.category)}
                       </span>
                     </td>
                     <td className="p-4">
@@ -478,6 +514,18 @@ export default function MenusPage() {
                               );
                           })}
                       </div>
+                    </td>
+                    <td className="p-4">
+                      {menu.is_orderable ? (
+                        <div>
+                          <p className="font-bold text-[#114C2A] text-sm">Rp{Number(menu.price || 0).toLocaleString('id-ID')}</p>
+                          <p className={`text-[10px] font-bold ${menu.is_available === false ? 'text-red-500' : 'text-emerald-600'}`}>
+                            {menu.is_available === false ? 'Tidak tersedia' : 'Bisa dipesan'}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-xs font-semibold text-slate-400">Tidak dijual perporsi</span>
+                      )}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -499,7 +547,7 @@ export default function MenusPage() {
                 ))}
                 {filteredMenus.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-500">Tidak ada menu yang sesuai pencarian.</td>
+                    <td colSpan={6} className="p-8 text-center text-slate-500">Tidak ada menu yang sesuai pencarian.</td>
                   </tr>
                 )}
               </tbody>
@@ -623,31 +671,70 @@ export default function MenusPage() {
                </div>
 
                <div>
-                 <label className="block text-sm font-bold text-slate-700 mb-2">Kategori <span className="text-red-400">*</span></label>
-                  <div className="grid grid-cols-2 gap-3">
-                      {['Lunch', 'Dinner'].map(cat => (
-                         <label 
-                           key={cat} 
-                           className={`flex items-center justify-center p-3 border rounded-xl cursor-pointer transition-all
-                             ${formData.category === cat.toLowerCase() 
-                               ? 'border-[#114C2A] bg-[#114C2A]/5 text-[#114C2A] ring-2 ring-[#114C2A]/20' 
-                               : 'border-gray-200 hover:bg-gray-50'
-                             }
-                           `}
-                         >
-                             <input 
-                               type="radio" 
-                               name="category" 
-                               value={cat.toLowerCase()} 
-                               checked={formData.category === cat.toLowerCase()}
-                               onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                               className="sr-only" 
-                             />
-                             <span className="font-bold text-sm">{cat}</span>
-                         </label>
-                     ))}
-                 </div>
-               </div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Kategori <span className="text-red-400">*</span></label>
+                   <div className="grid grid-cols-2 gap-3">
+                       {categories.map(cat => (
+                          <label
+                            key={cat._id}
+                            className={`flex items-center justify-center p-3 border rounded-xl cursor-pointer transition-all
+                              ${formData.category === cat.slug
+                                ? 'border-[#114C2A] bg-[#114C2A]/5 text-[#114C2A] ring-2 ring-[#114C2A]/20'
+                                : 'border-gray-200 hover:bg-gray-50'
+                              }
+                            `}
+                          >
+                              <input
+                                type="radio"
+                                name="category"
+                                value={cat.slug}
+                                checked={formData.category === cat.slug}
+                                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                                className="sr-only"
+                              />
+                              <span className="font-bold text-sm">{cat.name}</span>
+                          </label>
+                      ))}
+                  </div>
+                </div>
+
+                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700">Dijual Perporsi</label>
+                      <p className="text-xs text-slate-400">Aktifkan untuk pesanan coba menu atau acara.</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(formData.is_orderable)}
+                      onChange={(e) => setFormData(prev => ({ ...prev, is_orderable: e.target.checked }))}
+                      className="w-5 h-5 accent-[#114C2A]"
+                    />
+                  </div>
+                  {formData.is_orderable && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-500 mb-1">Harga per porsi</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.price || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, price: Number(e.target.value) || 0 }))}
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F9A826] font-medium bg-white"
+                          placeholder="35000"
+                        />
+                      </div>
+                      <label className="flex items-center gap-2 pt-6 text-sm font-bold text-slate-600">
+                        <input
+                          type="checkbox"
+                          checked={formData.is_available !== false}
+                          onChange={(e) => setFormData(prev => ({ ...prev, is_available: e.target.checked }))}
+                          className="w-4 h-4 accent-[#114C2A]"
+                        />
+                        Tersedia
+                      </label>
+                    </div>
+                  )}
+                </div>
 
                 {/* Kandungan Gizi */}
                 <div className="bg-slate-50 p-4 rounded-2xl border border-gray-100 space-y-3">

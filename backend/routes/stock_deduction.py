@@ -24,6 +24,9 @@ DURATION_DAY_MAP = {
     '30 Hari': [1, 2, 3, 4, 5, 6] * 5,
 }
 
+# Helper ini tidak punya endpoint sendiri. Fungsi-fungsinya dipanggil dari
+# routes/transactions.py ketika pembayaran confirmed atau order dibatalkan.
+
 
 def _get_menus_for_item(db, item):
     """
@@ -37,6 +40,16 @@ def _get_menus_for_item(db, item):
     Returns:
         list of menu documents dari collection menus
     """
+    if item.get('type') == 'menu':
+        menu_id = item.get('slug') or item.get('menu_id')
+        if not menu_id:
+            return []
+        try:
+            menu = db['menus'].find_one({'_id': ObjectId(menu_id)})
+            return [menu] if menu else []
+        except Exception:
+            return []
+
     package_slug = item.get('package_slug', '')
     duration = item.get('duration', '')
     meal_type = item.get('meal_type', '').lower()  # 'lunch', 'dinner', 'lunch & dinner'
@@ -56,6 +69,7 @@ def _get_menus_for_item(db, item):
     # Tentukan hari mana saja berdasarkan durasi
     day_numbers = DURATION_DAY_MAP.get(duration, [])
     if not day_numbers:
+        # Fallback ini menjaga sistem tetap berjalan jika label durasi berubah.
         # Fallback: coba parse angka dari string durasi
         try:
             num_days = int(''.join(filter(str.isdigit, duration)))
@@ -85,6 +99,7 @@ def _get_menus_for_item(db, item):
 
         # Tentukan menu berdasarkan meal_type
         if meal_type in ['lunch', 'lunch & dinner']:
+            # Meal type menentukan apakah menu lunch, dinner, atau keduanya dihitung.
             mid = day_entry.get('lunch_menu_id', '')
             if mid:
                 menu_ids.append(mid)
@@ -126,6 +141,7 @@ def _calculate_materials_needed(menus, quantity=1):
             continue
 
         for item in item_details:
+            # item_details berisi bahan dan takaran per porsi dari setiap menu.
             name = item.get('name', '').strip()
             if not name:
                 continue
@@ -181,6 +197,7 @@ def deduct_stock_for_transaction(db, transaction):
     all_materials = {}
 
     for item in items:
+        # Setiap item transaksi dapat memiliki paket, durasi, meal_type, dan qty berbeda.
         menus = _get_menus_for_item(db, item)
         qty = item.get('quantity', 1)
         item_materials = _calculate_materials_needed(menus, quantity=qty)
@@ -209,6 +226,7 @@ def deduct_stock_for_transaction(db, transaction):
         qty_to_deduct = mat_info['quantity']
 
         # Case-insensitive match by name
+        # Nama bahan dicocokkan tanpa memperhatikan huruf besar/kecil.
         result = db['materials'].update_one(
             {'name': {'$regex': f'^{_escape_regex(name_lower)}$', '$options': 'i'}},
             {'$inc': {'stock': -qty_to_deduct}}
@@ -236,6 +254,7 @@ def deduct_stock_for_transaction(db, transaction):
             print(f"[STOCK WARNING] Bahan '{mat_info['name']}' tidak ditemukan di materials (order: {order_id})")
 
     # Tandai transaksi sudah di-deduct
+    # Flag ini mencegah deduct stok dilakukan dua kali untuk order yang sama.
     db['transactions'].update_one(
         {'_id': transaction['_id']},
         {'$set': {'stock_deducted': True, 'stock_deducted_at': now}}
@@ -275,6 +294,7 @@ def restore_stock_for_transaction(db, transaction):
     # Hitung ulang bahan yang perlu dikembalikan
     all_materials = {}
     for item in items:
+        # Restore memakai perhitungan ulang dari transaksi yang sama agar jumlahnya konsisten.
         menus = _get_menus_for_item(db, item)
         qty = item.get('quantity', 1)
         item_materials = _calculate_materials_needed(menus, quantity=qty)

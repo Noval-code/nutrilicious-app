@@ -50,6 +50,13 @@ export default function CheckoutPage() {
           customer_lng: userAddress.lng,
           customer_notes: notes,
           items: items.map(item => ({
+            type: item.type || 'package',
+            name: item.name || item.package_name,
+            slug: item.slug || item.package_slug,
+            category: item.category || '',
+            order_type: item.order_type || '',
+            event_date: item.event_date || '',
+            event_time: item.event_time || '',
             package_name: item.package_name,
             package_slug: item.package_slug,
             duration: item.duration,
@@ -168,8 +175,12 @@ export default function CheckoutPage() {
                 {items.map((item) => (
                   <div key={item.id} className="px-5 py-3 flex items-center justify-between">
                     <div>
-                      <p className="font-semibold text-slate-800 text-sm">{item.package_name}</p>
-                      <p className="text-xs text-slate-400">{item.duration} · {item.meal_type} · x{item.quantity}</p>
+                      <p className="font-semibold text-slate-800 text-sm">{item.name || item.package_name}</p>
+                      <p className="text-xs text-slate-400">
+                        {item.type === 'menu'
+                          ? `${item.category || 'Menu'} · ${item.order_type === 'event' ? 'Acara' : 'Coba Menu'}${item.event_date ? ` · ${item.event_date}${item.event_time ? ` ${item.event_time}` : ''}` : ''} · x${item.quantity}`
+                          : `${item.duration} · ${item.meal_type} · x${item.quantity}`}
+                      </p>
                     </div>
                     <p className="font-bold text-slate-700 text-sm">Rp{item.price}</p>
                   </div>

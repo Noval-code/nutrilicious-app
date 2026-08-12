@@ -205,7 +205,16 @@ def create_transaction():
         qty = int(item.get('quantity', 1))
         subtotal = price * qty
         total += subtotal
+        item_type = item.get('type', 'package')
+        name = item.get('name') or item.get('package_name', '')
         items.append({
+            'type': item_type,
+            'name': name,
+            'slug': item.get('slug') or item.get('package_slug', ''),
+            'category': item.get('category', ''),
+            'order_type': item.get('order_type', ''),
+            'event_date': item.get('event_date', ''),
+            'event_time': item.get('event_time', ''),
             'package_name': item.get('package_name', ''),
             'package_slug': item.get('package_slug', ''),
             'duration': item.get('duration', ''),
@@ -253,8 +262,15 @@ def create_transaction():
         # Buat items untuk invoice
         invoice_items = []
         for item in items:
+            if item.get('type') == 'menu':
+                detail = item.get('category', 'Menu')
+                if item.get('order_type') == 'event':
+                    detail = f"Acara {item.get('event_date', '')} {item.get('event_time', '')}".strip()
+                item_name = f"{item['name']} ({detail})"
+            else:
+                item_name = f"{item['package_name']} ({item['duration']} - {item['meal_type']})"
             invoice_items.append(InvoiceItem(
-                name=f"{item['package_name']} ({item['duration']} - {item['meal_type']})",
+                name=item_name,
                 quantity=float(item['quantity']),
                 price=float(item['price']),
             ))

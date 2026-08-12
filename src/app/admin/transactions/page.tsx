@@ -7,6 +7,12 @@ import * as XLSX from 'xlsx';
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 
 interface TransactionItem {
+  type?: 'package' | 'menu';
+  name?: string;
+  category?: string;
+  order_type?: string;
+  event_date?: string;
+  event_time?: string;
   package_name: string;
   duration: string;
   meal_type: string;
@@ -200,7 +206,13 @@ export default function TransactionsPage() {
 
       const dataToExport = allTxns.map(txn => {
         const statusLabel = STATUS_CONFIG[txn.status]?.label || txn.status;
-        const itemsString = txn.items.map(item => `${item.package_name} (${item.duration} - ${item.meal_type}) x${item.quantity}`).join('; ');
+        const itemsString = txn.items.map(item => {
+          if (item.type === 'menu') {
+            const detail = item.order_type === 'event' ? `Acara ${item.event_date || ''} ${item.event_time || ''}`.trim() : 'Coba Menu';
+            return `${item.name || item.package_name} (${item.category || 'Menu'} - ${detail}) x${item.quantity}`;
+          }
+          return `${item.package_name} (${item.duration} - ${item.meal_type}) x${item.quantity}`;
+        }).join('; ');
         const hasCoordinates = typeof txn.customer_lat === 'number' && typeof txn.customer_lng === 'number';
         const gmapsLink = hasCoordinates
           ? `https://www.google.com/maps?q=${txn.customer_lat},${txn.customer_lng}`
@@ -450,7 +462,7 @@ export default function TransactionsPage() {
                         <div className="flex flex-wrap gap-1 max-w-[200px]">
                           {txn.items.slice(0, 2).map((item, i) => (
                             <span key={i} className="bg-gray-100 text-slate-600 text-[11px] font-semibold px-2 py-0.5 rounded-md truncate max-w-[150px]">
-                              {item.package_name || 'Paket'}
+                              {item.name || item.package_name || 'Paket'}
                             </span>
                           ))}
                           {txn.items.length > 2 && (
@@ -622,10 +634,20 @@ export default function TransactionsPage() {
                   {selectedTxn.items.map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl">
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-slate-800 truncate">{item.package_name || 'Paket'}</p>
+                        <p className="font-bold text-sm text-slate-800 truncate">{item.name || item.package_name || 'Paket'}</p>
                         <div className="flex gap-2 mt-1">
-                          {item.duration && <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{item.duration}</span>}
-                          {item.meal_type && <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{item.meal_type}</span>}
+                          {item.type === 'menu' ? (
+                            <>
+                              {item.category && <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{item.category}</span>}
+                              <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{item.order_type === 'event' ? 'Acara' : 'Coba Menu'}</span>
+                              {item.event_date && <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{item.event_date}{item.event_time ? ` ${item.event_time}` : ''}</span>}
+                            </>
+                          ) : (
+                            <>
+                              {item.duration && <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{item.duration}</span>}
+                              {item.meal_type && <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{item.meal_type}</span>}
+                            </>
+                          )}
                         </div>
                       </div>
                       <div className="text-right ml-3">

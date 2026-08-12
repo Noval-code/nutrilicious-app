@@ -16,6 +16,7 @@ import {
   X,
   Loader2,
   BarChart3,
+  Tags,
 } from 'lucide-react';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
@@ -170,6 +171,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Katalog Menu', href: '/admin/menus', icon: UtensilsCrossed },
+    { name: 'Kategori Menu', href: '/admin/menu-categories', icon: Tags },
     { name: 'Paket Langganan', href: '/admin/packages', icon: PackageSearch },
     { name: 'Jadwal Menu', href: '/admin/menu-schedules', icon: CalendarDays },
     { name: 'Stok Bahan Baku', href: '/admin/materials', icon: Beef },

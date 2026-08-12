@@ -86,7 +86,7 @@ export function CartWidget() {
                   </div>
                   <p className="font-bold text-slate-700 text-lg">Keranjang Kosong</p>
                   <p className="text-slate-400 text-sm mt-1 max-w-[240px]">
-                    Pilih paket langganan yang sesuai untukmu di halaman Pricing.
+                    Pilih paket langganan atau menu perporsi yang sesuai.
                   </p>
                 </div>
               ) : (
@@ -97,14 +97,32 @@ export function CartWidget() {
                   >
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
-                        <h3 className="font-extrabold text-slate-800 text-sm">{item.package_name}</h3>
+                        <h3 className="font-extrabold text-slate-800 text-sm">{item.name || item.package_name}</h3>
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#f2f6f4] text-[#114C2A] text-[10px] font-bold">
-                            {item.duration}
-                          </span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] font-bold">
-                            {item.meal_type}
-                          </span>
+                          {item.type === 'menu' ? (
+                            <>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#f2f6f4] text-[#114C2A] text-[10px] font-bold">
+                                {item.category || 'Menu'}
+                              </span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] font-bold">
+                                {item.order_type === 'event' ? 'Acara' : 'Coba Menu'}
+                              </span>
+                              {item.event_date && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[10px] font-bold">
+                                  {item.event_date}{item.event_time ? ` ${item.event_time}` : ''}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#f2f6f4] text-[#114C2A] text-[10px] font-bold">
+                                {item.duration}
+                              </span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] font-bold">
+                                {item.meal_type}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                       <button

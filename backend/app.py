@@ -55,11 +55,14 @@ from flask_compress import Compress
 from config import Config
 from db import close_db
 
-# Import blueprints
+# Import semua blueprint route.
+# Setiap blueprint memisahkan endpoint berdasarkan fitur agar app.py hanya
+# bertugas sebagai pusat konfigurasi dan pendaftaran route.
 from routes.auth import auth_bp
 from routes.materials import materials_bp
 from routes.menus import menus_bp
 from routes.packages import packages_bp
+from routes.menu_categories import menu_categories_bp
 from routes.dashboard import dashboard_bp
 from routes.chat import chat_bp
 from routes.transactions import transactions_bp
@@ -110,10 +113,17 @@ def create_app():
     Compress(app)  # Kompres semua HTTP response >500 bytes (gzip/brotli)
 
     # Register blueprints
+    # Alur request backend:
+    # 1. Frontend memanggil endpoint dengan prefix /api/...
+    # 2. Flask mencocokkan prefix ke blueprint yang sesuai.
+    # 3. Fungsi route di backend/routes/... memvalidasi request.
+    # 4. Route mengambil/menyimpan data ke MongoDB atau memanggil service lain.
+    # 5. Route mengembalikan response JSON ke frontend.
     app.register_blueprint(auth_bp,         url_prefix='/api/auth')
     app.register_blueprint(materials_bp,    url_prefix='/api/materials')
     app.register_blueprint(menus_bp,        url_prefix='/api/menus')
     app.register_blueprint(packages_bp,     url_prefix='/api/packages')
+    app.register_blueprint(menu_categories_bp, url_prefix='/api/menu-categories')
     app.register_blueprint(dashboard_bp,    url_prefix='/api/dashboard')
     app.register_blueprint(chat_bp,         url_prefix='/api/chat')
     app.register_blueprint(transactions_bp, url_prefix='/api/transactions')

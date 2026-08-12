@@ -13,6 +13,12 @@ interface Transaction {
   total: number;
   xendit_invoice_url?: string;
   items: Array<{
+    type?: 'package' | 'menu';
+    name?: string;
+    category?: string;
+    order_type?: string;
+    event_date?: string;
+    event_time?: string;
     package_name: string;
     duration: string;
     meal_type: string;
@@ -177,8 +183,12 @@ function CheckoutSuccessContent() {
               {txn.items.map((item, idx) => (
                 <div key={idx} className="flex justify-between items-center">
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">{item.package_name}</p>
-                    <p className="text-xs text-slate-400">{item.duration} · {item.meal_type} · x{item.quantity}</p>
+                    <p className="text-sm font-semibold text-slate-800">{item.name || item.package_name}</p>
+                    <p className="text-xs text-slate-400">
+                      {item.type === 'menu'
+                        ? `${item.category || 'Menu'} · ${item.order_type === 'event' ? 'Acara' : 'Coba Menu'}${item.event_date ? ` · ${item.event_date}${item.event_time ? ` ${item.event_time}` : ''}` : ''} · x${item.quantity}`
+                        : `${item.duration} · ${item.meal_type} · x${item.quantity}`}
+                    </p>
                   </div>
                   <p className="text-sm font-bold text-slate-700">Rp{formatRupiah(item.price * item.quantity)}</p>
                 </div>

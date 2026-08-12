@@ -24,6 +24,7 @@ def _ensure_indexes(database):
 
     # Menus & Materials: lookup by slug/name
     database['menus'].create_index('slug', unique=True, sparse=True)
+    database['menu_categories'].create_index('slug', unique=True)
     database['materials'].create_index('name')
 
 

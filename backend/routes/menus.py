@@ -9,6 +9,11 @@ from cloudinary_helper import delete_image
 
 menus_bp = Blueprint('menus', __name__)
 
+# Alur route menus:
+# Frontend/admin mengelola katalog menu melalui CRUD, route menormalisasi data
+# menu, menyimpan detail nutrisi dan bahan, serta membersihkan gambar lama
+# dari Cloudinary ketika gambar menu diganti atau menu dihapus.
+
 
 def serialize_menu(menu):
     """Convert MongoDB document to JSON-serializable dict"""
@@ -25,6 +30,9 @@ def serialize_menu(menu):
     menu['carbs'] = menu.get('carbs', 0)
     menu['fat'] = menu.get('fat', 0)
     menu['sugar'] = menu.get('sugar', 0)
+    menu['price'] = menu.get('price', 0)
+    menu['is_orderable'] = menu.get('is_orderable', False)
+    menu['is_available'] = menu.get('is_available', True)
     return menu
 
 
@@ -35,12 +43,20 @@ def get_menus():
     
     search = request.args.get('search', '')
     category = request.args.get('category', '')
+    orderable = request.args.get('orderable', '')
+    available = request.args.get('available', '')
     
     query = {}
     if search:
+        # Search menu berdasarkan judul dengan regex case-insensitive.
         query['title'] = {'$regex': search, '$options': 'i'}
     if category and category != 'all':
+        # Filter kategori dipakai halaman katalog/admin untuk membatasi menu.
         query['category'] = category
+    if orderable == 'true':
+        query['is_orderable'] = True
+    if available == 'true':
+        query['is_available'] = True
     
     menus = list(db['menus'].find(query))
     return jsonify([serialize_menu(m) for m in menus])
@@ -87,6 +103,9 @@ def create_menu():
         'carbs': data.get('carbs', 0),
         'fat': data.get('fat', 0),
         'sugar': data.get('sugar', 0),
+        'price': data.get('price', 0),
+        'is_orderable': data.get('is_orderable', False),
+        'is_available': data.get('is_available', True),
     }
     
     result = db['menus'].insert_one(menu)
@@ -102,12 +121,13 @@ def update_menu(menu_id):
     data = request.get_json()
     
     update_data = {}
-    for field in ['title', 'category', 'items', 'item_details', 'image_url', 'image_public_id', 'calories', 'protein', 'carbs', 'fat', 'sugar']:
+    for field in ['title', 'category', 'items', 'item_details', 'image_url', 'image_public_id', 'calories', 'protein', 'carbs', 'fat', 'sugar', 'price', 'is_orderable', 'is_available']:
         if field in data:
             update_data[field] = data[field]
     
     # Jika gambar diganti, hapus gambar lama dari Cloudinary
     if 'image_public_id' in data:
+        # Hanya hapus gambar lama jika public_id berbeda dengan gambar baru.
         old_menu = db['menus'].find_one({'_id': ObjectId(menu_id)})
         if old_menu and old_menu.get('image_public_id') and old_menu['image_public_id'] != data.get('image_public_id', ''):
             delete_image(old_menu['image_public_id'])
