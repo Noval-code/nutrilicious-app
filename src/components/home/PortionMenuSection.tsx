@@ -71,12 +71,111 @@ function getMenuPricing(menu: PortionMenu, orderType: 'regular' | 'event', quant
   };
 }
 
+interface MenuCardProps {
+  menu: PortionMenu;
+  categoryLabel: string;
+  quantity: number;
+  pricing: ReturnType<typeof getMenuPricing>;
+  hasDiscount: boolean;
+  justAdded?: boolean;
+  orderType: 'regular' | 'event';
+  eventDate?: string;
+  eventTime?: string;
+  onEventDateChange?: (value: string) => void;
+  onEventTimeChange?: (value: string) => void;
+  onDecrease: () => void;
+  onIncrease: () => void;
+  onAdd: () => void;
+}
+
+function MenuCard({
+  menu,
+  categoryLabel,
+  quantity,
+  pricing,
+  hasDiscount,
+  justAdded,
+  orderType,
+  eventDate = '',
+  eventTime = '',
+  onEventDateChange,
+  onEventTimeChange,
+  onDecrease,
+  onIncrease,
+  onAdd,
+}: MenuCardProps) {
+  return (
+    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col">
+      {menu.image_url && (
+        <div className="relative aspect-[4/3] bg-slate-100">
+          <Image src={menu.image_url} alt={menu.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
+        </div>
+      )}
+      <div className="p-6 flex flex-col flex-1">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#114C2A]">{categoryLabel}</p>
+            <h3 className="text-xl font-extrabold text-slate-800 mt-1">{menu.title}</h3>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="text-xs font-semibold text-slate-400">per porsi</p>
+            {hasDiscount && (
+              <p className="text-xs font-semibold text-slate-400 line-through">Rp{formatRupiah(pricing.originalPrice)}</p>
+            )}
+            <p className="font-black text-[#114C2A]">Rp{formatRupiah(pricing.finalPrice)}</p>
+            {hasDiscount && (
+              <p className="text-[10px] font-black text-[#F9A826]">
+                {orderType === 'event' ? `Diskon acara ${pricing.discountPercent}%` : 'Promo'}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5 mb-4 text-[11px] font-bold">
+          {menu.calories ? <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-lg">{menu.calories} kcal</span> : null}
+          {menu.protein ? <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg">Protein {menu.protein}g</span> : null}
+          {menu.carbs ? <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg">Karbo {menu.carbs}g</span> : null}
+        </div>
+
+        <div className="space-y-3 mt-auto">
+          {orderType === 'event' && (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="relative">
+                  <CalendarDays className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input type="date" min={todayValue()} value={eventDate} onChange={(e) => onEventDateChange?.(e.target.value)} className="w-full border border-gray-200 rounded-xl pl-9 pr-2 py-2 text-xs font-semibold" />
+                </div>
+                <input type="time" value={eventTime} onChange={(e) => onEventTimeChange?.(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold" />
+              </div>
+              {menu.event_discount_tiers && menu.event_discount_tiers.length > 0 && (
+                <p className="text-[11px] font-bold text-amber-600 bg-amber-50 rounded-lg px-2 py-1">
+                  Diskon acara mengikuti jumlah porsi. Saat ini {pricing.discountPercent > 0 ? `${pricing.discountPercent}%` : 'belum memenuhi minimal porsi'}.
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button onClick={onDecrease} className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-slate-500"><Minus className="w-4 h-4" /></button>
+              <span className="w-10 text-center font-black text-slate-700">{quantity}</span>
+              <button onClick={onIncrease} className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-slate-500"><Plus className="w-4 h-4" /></button>
+            </div>
+            <button onClick={onAdd} className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 ${justAdded ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white hover:bg-[#114C2A]'}`}>
+              {justAdded ? <><Check className="w-4 h-4" />Ditambahkan</> : <><ShoppingCart className="w-4 h-4" />{orderType === 'event' ? 'Pesan Acara' : 'Tambah'}</>}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PortionMenuSection() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [menus, setMenus] = useState<PortionMenu[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [orderTypes, setOrderTypes] = useState<Record<string, 'regular' | 'event'>>({});
   const [eventDates, setEventDates] = useState<Record<string, string>>({});
   const [eventTimes, setEventTimes] = useState<Record<string, string>>({});
   const [addedItems, setAddedItems] = useState<Record<string, boolean>>({});
@@ -110,11 +209,9 @@ export function PortionMenuSection() {
     : menus.filter(menu => menu.category === selectedCategory);
 
   const getQuantity = (id: string) => quantities[id] || 1;
-  const getOrderType = (id: string) => orderTypes[id] || 'regular';
 
-  const handleAddToCart = (menu: PortionMenu) => {
+  const handleAddToCart = (menu: PortionMenu, orderType: 'regular' | 'event') => {
     const quantity = getQuantity(menu._id);
-    const orderType = getOrderType(menu._id);
     const eventDate = eventDates[menu._id] || '';
     const eventTime = eventTimes[menu._id] || '';
 
@@ -141,8 +238,9 @@ export function PortionMenuSection() {
       meal_type: '',
     }, quantity);
 
-    setAddedItems(prev => ({ ...prev, [menu._id]: true }));
-    setTimeout(() => setAddedItems(prev => ({ ...prev, [menu._id]: false })), 1500);
+    const addedKey = `${menu._id}-${orderType}`;
+    setAddedItems(prev => ({ ...prev, [addedKey]: true }));
+    setTimeout(() => setAddedItems(prev => ({ ...prev, [addedKey]: false })), 1500);
   };
 
   return (
@@ -150,11 +248,11 @@ export function PortionMenuSection() {
       <div className="container mx-auto px-4 md:px-6">
         <div className="text-center mb-12 max-w-3xl mx-auto">
           <span className="inline-flex items-center gap-2 bg-[#F9A826]/15 text-[#114C2A] px-4 py-1.5 rounded-full text-sm font-bold tracking-wide mb-4 uppercase">
-            <Sparkles className="w-4 h-4" /> Pesan Perporsi
+            <Sparkles className="w-4 h-4" /> Pesan Menu
           </span>
-          <h2 className="text-4xl md:text-5xl font-extrabold text-slate-800 tracking-tight">Menu untuk Coba Rasa dan Acara</h2>
+          <h2 className="text-4xl md:text-5xl font-extrabold text-slate-800 tracking-tight">Menu Satuan dan Acara</h2>
           <p className="mt-4 text-slate-500 text-base md:text-lg">
-            Pilih menu satuan untuk kebutuhan harian atau pesan dalam jumlah besar untuk acara.
+            Pesan menu satuan untuk coba rasa, atau pilih layanan acara untuk kebutuhan borongan.
           </p>
         </div>
 
@@ -189,85 +287,80 @@ export function PortionMenuSection() {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
-              {filteredMenus.map(menu => {
-                const quantity = getQuantity(menu._id);
-                const orderType = getOrderType(menu._id);
-                const justAdded = addedItems[menu._id];
-                const pricing = getMenuPricing(menu, orderType, quantity);
-                const hasDiscount = pricing.finalPrice < pricing.originalPrice;
-
-                return (
-                  <div key={menu._id} className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col">
-                    {menu.image_url && (
-                      <div className="relative aspect-[4/3] bg-slate-100">
-                        <Image src={menu.image_url} alt={menu.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
-                      </div>
-                    )}
-                    <div className="p-6 flex flex-col flex-1">
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div>
-                          <p className="text-xs font-bold uppercase tracking-wider text-[#114C2A]">{categories.find(cat => cat.slug === menu.category)?.name || menu.category}</p>
-                          <h3 className="text-xl font-extrabold text-slate-800 mt-1">{menu.title}</h3>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-xs font-semibold text-slate-400">per porsi</p>
-                          {hasDiscount && (
-                            <p className="text-xs font-semibold text-slate-400 line-through">Rp{formatRupiah(pricing.originalPrice)}</p>
-                          )}
-                          <p className="font-black text-[#114C2A]">Rp{formatRupiah(pricing.finalPrice)}</p>
-                          {hasDiscount && (
-                            <p className="text-[10px] font-black text-[#F9A826]">
-                              {orderType === 'event' ? `Diskon acara ${pricing.discountPercent}%` : 'Promo'}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-1.5 mb-4 text-[11px] font-bold">
-                        {menu.calories ? <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-lg">{menu.calories} kcal</span> : null}
-                        {menu.protein ? <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg">Protein {menu.protein}g</span> : null}
-                        {menu.carbs ? <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg">Karbo {menu.carbs}g</span> : null}
-                      </div>
-
-                      <div className="space-y-3 mt-auto">
-                        <div className="grid grid-cols-2 gap-2">
-                          <button onClick={() => setOrderTypes(prev => ({ ...prev, [menu._id]: 'regular' }))} className={`py-2 rounded-xl text-xs font-bold border ${orderType === 'regular' ? 'border-[#114C2A] bg-[#114C2A]/5 text-[#114C2A]' : 'border-gray-100 text-slate-400'}`}>Coba Menu</button>
-                          <button onClick={() => setOrderTypes(prev => ({ ...prev, [menu._id]: 'event' }))} className={`py-2 rounded-xl text-xs font-bold border flex items-center justify-center gap-1 ${orderType === 'event' ? 'border-[#114C2A] bg-[#114C2A]/5 text-[#114C2A]' : 'border-gray-100 text-slate-400'}`}><Users className="w-3 h-3" />Acara</button>
-                        </div>
-
-                        {orderType === 'event' && (
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="relative">
-                                <CalendarDays className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                <input type="date" min={todayValue()} value={eventDates[menu._id] || ''} onChange={(e) => setEventDates(prev => ({ ...prev, [menu._id]: e.target.value }))} className="w-full border border-gray-200 rounded-xl pl-9 pr-2 py-2 text-xs font-semibold" />
-                              </div>
-                              <input type="time" value={eventTimes[menu._id] || ''} onChange={(e) => setEventTimes(prev => ({ ...prev, [menu._id]: e.target.value }))} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold" />
-                            </div>
-                            {menu.event_discount_tiers && menu.event_discount_tiers.length > 0 && (
-                              <p className="text-[11px] font-bold text-amber-600 bg-amber-50 rounded-lg px-2 py-1">
-                                Diskon acara mengikuti jumlah porsi. Saat ini {pricing.discountPercent > 0 ? `${pricing.discountPercent}%` : 'belum memenuhi minimal porsi'}.
-                              </p>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2">
-                            <button onClick={() => setQuantities(prev => ({ ...prev, [menu._id]: Math.max(1, quantity - 1) }))} className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-slate-500"><Minus className="w-4 h-4" /></button>
-                            <span className="w-10 text-center font-black text-slate-700">{quantity}</span>
-                            <button onClick={() => setQuantities(prev => ({ ...prev, [menu._id]: quantity + 1 }))} className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-slate-500"><Plus className="w-4 h-4" /></button>
-                          </div>
-                          <button onClick={() => handleAddToCart(menu)} className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 ${justAdded ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white hover:bg-[#114C2A]'}`}>
-                            {justAdded ? <><Check className="w-4 h-4" />Ditambahkan</> : <><ShoppingCart className="w-4 h-4" />Tambah</>}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+            <div className="space-y-16 max-w-7xl mx-auto">
+              <div id="menu-satuan" className="space-y-6">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
+                  <div>
+                    <h3 className="text-2xl md:text-3xl font-black text-[#114C2A]">Menu Satuan</h3>
+                    <p className="text-slate-500 text-sm md:text-base mt-1">Cocok untuk coba rasa atau pesan harian per porsi.</p>
                   </div>
-                );
-              })}
+                  <span className="w-fit bg-[#F9A826]/15 text-[#114C2A] px-3 py-1.5 rounded-full text-xs font-black">Promo satuan otomatis aktif jika tersedia</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {filteredMenus.map(menu => {
+                    const quantity = getQuantity(menu._id);
+                    const justAdded = addedItems[`${menu._id}-regular`];
+                    const pricing = getMenuPricing(menu, 'regular', quantity);
+                    const hasDiscount = pricing.finalPrice < pricing.originalPrice;
+
+                    return (
+                      <MenuCard
+                        key={`regular-${menu._id}`}
+                        menu={menu}
+                        categoryLabel={categories.find(cat => cat.slug === menu.category)?.name || menu.category}
+                        quantity={quantity}
+                        pricing={pricing}
+                        hasDiscount={hasDiscount}
+                        justAdded={justAdded}
+                        orderType="regular"
+                        onDecrease={() => setQuantities(prev => ({ ...prev, [menu._id]: Math.max(1, quantity - 1) }))}
+                        onIncrease={() => setQuantities(prev => ({ ...prev, [menu._id]: quantity + 1 }))}
+                        onAdd={() => handleAddToCart(menu, 'regular')}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div id="menu-acara" className="space-y-6 bg-slate-50 border border-gray-100 rounded-[32px] p-5 md:p-8">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
+                  <div>
+                    <h3 className="text-2xl md:text-3xl font-black text-[#114C2A] flex items-center gap-2"><Users className="w-7 h-7 text-[#F9A826]" /> Menu Acara & Borongan</h3>
+                    <p className="text-slate-500 text-sm md:text-base mt-1">Untuk pesanan jumlah besar dengan tanggal acara dan diskon bertingkat.</p>
+                  </div>
+                  <span className="w-fit bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full text-xs font-black">Diskon makin besar sesuai jumlah porsi</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {filteredMenus.map(menu => {
+                    const quantity = getQuantity(menu._id);
+                    const justAdded = addedItems[`${menu._id}-event`];
+                    const pricing = getMenuPricing(menu, 'event', quantity);
+                    const hasDiscount = pricing.finalPrice < pricing.originalPrice;
+
+                    return (
+                      <MenuCard
+                        key={`event-${menu._id}`}
+                        menu={menu}
+                        categoryLabel={categories.find(cat => cat.slug === menu.category)?.name || menu.category}
+                        quantity={quantity}
+                        pricing={pricing}
+                        hasDiscount={hasDiscount}
+                        justAdded={justAdded}
+                        orderType="event"
+                        eventDate={eventDates[menu._id] || ''}
+                        eventTime={eventTimes[menu._id] || ''}
+                        onEventDateChange={(value) => setEventDates(prev => ({ ...prev, [menu._id]: value }))}
+                        onEventTimeChange={(value) => setEventTimes(prev => ({ ...prev, [menu._id]: value }))}
+                        onDecrease={() => setQuantities(prev => ({ ...prev, [menu._id]: Math.max(1, quantity - 1) }))}
+                        onIncrease={() => setQuantities(prev => ({ ...prev, [menu._id]: quantity + 1 }))}
+                        onAdd={() => handleAddToCart(menu, 'event')}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             {filteredMenus.length === 0 && (
