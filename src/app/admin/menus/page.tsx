@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { Plus, Search, Edit2, Trash2, X, Save, Loader2, AlertCircle, Upload, ImageIcon, Scale, Flame } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, Save, Loader2, AlertCircle, Upload, ImageIcon, Scale, Flame, Tags } from 'lucide-react';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 
@@ -61,6 +61,7 @@ const emptyForm = (): Menu => ({
 export default function MenusPage() {
   const [menus, setMenus] = useState<Menu[]>([]);
   const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const [activeTab, setActiveTab] = useState<'menus' | 'categories'>('menus');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -76,6 +77,9 @@ export default function MenusPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [categoryName, setCategoryName] = useState('');
+  const [editingCategory, setEditingCategory] = useState<MenuCategory | null>(null);
+  const [savingCategory, setSavingCategory] = useState(false);
 
   const getCategoryLabel = (slug: string) => categories.find(cat => cat.slug === slug)?.name || slug;
 
@@ -376,6 +380,68 @@ export default function MenusPage() {
     }
   };
 
+  const resetCategoryForm = () => {
+    setCategoryName('');
+    setEditingCategory(null);
+    setError(null);
+  };
+
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!categoryName.trim()) {
+      setError('Nama kategori wajib diisi');
+      return;
+    }
+
+    try {
+      setSavingCategory(true);
+      setError(null);
+      const res = await fetch(`${API_URL}/menu-categories/${editingCategory ? editingCategory._id : ''}`, {
+        method: editingCategory ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: categoryName, is_active: editingCategory?.is_active ?? true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal menyimpan kategori');
+      setSuccessMsg(editingCategory ? 'Kategori berhasil diperbarui!' : 'Kategori berhasil ditambahkan!');
+      resetCategoryForm();
+      fetchCategories();
+      fetchMenus();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  const handleToggleCategory = async (category: MenuCategory) => {
+    try {
+      const res = await fetch(`${API_URL}/menu-categories/${category._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !category.is_active }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal mengubah status kategori');
+      fetchCategories();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleDeleteCategory = async (category: MenuCategory) => {
+    if (!confirm(`Yakin ingin menghapus kategori ${category.name}?`)) return;
+    try {
+      const res = await fetch(`${API_URL}/menu-categories/${category._id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal menghapus kategori');
+      setSuccessMsg('Kategori berhasil dihapus!');
+      fetchCategories();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   // Client-side filtering (search is also done via API, but we keep local filter for instant UX)
   const filteredMenus = menus;
 
@@ -387,11 +453,28 @@ export default function MenusPage() {
           <p className="text-slate-500 mt-1">Kelola daftar makanan dan komposisinya.</p>
         </div>
         
-        <button 
-          onClick={handleOpenCreate}
-          className="bg-[#114C2A] text-white px-5 py-2.5 rounded-xl font-bold border-2 border-transparent hover:bg-transparent hover:text-[#114C2A] hover:border-[#114C2A] transition-all flex items-center gap-2 shadow-md hover:shadow-none"
+        {activeTab === 'menus' && (
+          <button
+            onClick={handleOpenCreate}
+            className="bg-[#114C2A] text-white px-5 py-2.5 rounded-xl font-bold border-2 border-transparent hover:bg-transparent hover:text-[#114C2A] hover:border-[#114C2A] transition-all flex items-center gap-2 shadow-md hover:shadow-none"
+          >
+            <Plus className="w-5 h-5" /> Tambah Menu Baru
+          </button>
+        )}
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100 p-1 flex gap-1 w-fit shadow-sm">
+        <button
+          onClick={() => setActiveTab('menus')}
+          className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${activeTab === 'menus' ? 'bg-[#114C2A] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
         >
-          <Plus className="w-5 h-5" /> Tambah Menu Baru
+          Daftar Menu
+        </button>
+        <button
+          onClick={() => setActiveTab('categories')}
+          className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 ${activeTab === 'categories' ? 'bg-[#114C2A] text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+        >
+          <Tags className="w-4 h-4" /> Kategori Menu
         </button>
       </div>
 
@@ -402,8 +485,7 @@ export default function MenusPage() {
         </div>
       )}
 
-      {/* Loading State */}
-      {loading && (
+      {activeTab === 'menus' && loading && (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 text-[#114C2A] animate-spin" />
           <span className="ml-3 text-slate-500 font-medium">Memuat data menu...</span>
@@ -411,7 +493,7 @@ export default function MenusPage() {
       )}
 
       {/* Main Content Area */}
-      {!loading && (
+      {activeTab === 'menus' && !loading && (
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
           
           {/* Toolbar */}
@@ -550,6 +632,70 @@ export default function MenusPage() {
                     <td colSpan={6} className="p-8 text-center text-slate-500">Tidak ada menu yang sesuai pencarian.</td>
                   </tr>
                 )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'categories' && (
+        <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
+          <form onSubmit={handleSaveCategory} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 h-fit space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#114C2A]/10 text-[#114C2A] rounded-xl flex items-center justify-center">
+                <Tags className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="font-extrabold text-slate-800">{editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}</h2>
+                <p className="text-xs text-slate-400">Contoh: Breakfast, Snack, Lunch</p>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Nama Kategori</label>
+              <input
+                value={categoryName}
+                onChange={(e) => setCategoryName(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#F9A826] font-medium"
+                placeholder="Contoh: Breakfast"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button disabled={savingCategory} className="bg-[#114C2A] text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50">
+                {savingCategory ? <Loader2 className="w-4 h-4 animate-spin" /> : editingCategory ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                {editingCategory ? 'Simpan' : 'Tambah'}
+              </button>
+              {editingCategory && <button type="button" onClick={resetCategoryForm} className="px-4 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 flex items-center gap-2"><X className="w-4 h-4" />Batal</button>}
+            </div>
+          </form>
+
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-gray-100">
+                <tr>
+                  <th className="p-4 font-bold">Nama</th>
+                  <th className="p-4 font-bold">Slug</th>
+                  <th className="p-4 font-bold">Status</th>
+                  <th className="p-4 font-bold text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {categories.map(category => (
+                  <tr key={category._id} className="hover:bg-slate-50/80">
+                    <td className="p-4 font-bold text-slate-800">{category.name}</td>
+                    <td className="p-4 text-sm font-semibold text-slate-500">{category.slug}</td>
+                    <td className="p-4">
+                      <button onClick={() => handleToggleCategory(category)} className={`px-3 py-1 rounded-full text-xs font-bold ${category.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                        {category.is_active ? 'Aktif' : 'Nonaktif'}
+                      </button>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => { setEditingCategory(category); setCategoryName(category.name); }} className="p-2 text-slate-400 hover:text-[#F9A826] bg-white hover:bg-amber-50 rounded-lg border border-gray-100"><Edit2 className="w-4 h-4" /></button>
+                        <button onClick={() => handleDeleteCategory(category)} className="p-2 text-slate-400 hover:text-red-500 bg-white hover:bg-red-50 rounded-lg border border-gray-100"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
