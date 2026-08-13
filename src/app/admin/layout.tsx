@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   UtensilsCrossed,
@@ -18,6 +18,7 @@ import {
   Loader2,
   BarChart3,
   CreditCard,
+  Users,
 } from 'lucide-react';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
@@ -30,7 +31,6 @@ function getAdminToken() {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -177,6 +177,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Log Pengiriman', href: '/admin/delivery-logs', icon: Truck },
     { name: 'Stok Bahan Baku', href: '/admin/materials', icon: Beef },
     { name: 'Riwayat Transaksi', href: '/admin/transactions', icon: Receipt },
+    { name: 'Rekap User', href: '/admin/users-recap', icon: Users },
     { name: 'Pembayaran', href: '/admin/payment-settings', icon: CreditCard },
     { name: 'Prediksi Penjualan', href: '/admin/prediction', icon: TrendingUp },
     { name: 'Laporan Penjualan', href: '/admin/sales-reports', icon: BarChart3 },
