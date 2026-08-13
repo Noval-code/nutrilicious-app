@@ -26,6 +26,10 @@ def _ensure_indexes(database):
     database['menus'].create_index('slug', unique=True, sparse=True)
     database['menu_categories'].create_index('slug', unique=True)
     database['payment_settings'].create_index('key', unique=True)
+    database['delivery_logs'].create_index('transaction_id')
+    database['delivery_logs'].create_index('order_id')
+    database['delivery_logs'].create_index('user_id')
+    database['delivery_logs'].create_index('delivery_date')
     database['materials'].create_index('name')
 
 

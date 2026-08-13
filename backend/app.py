@@ -64,6 +64,7 @@ from routes.menus import menus_bp
 from routes.packages import packages_bp
 from routes.menu_categories import menu_categories_bp
 from routes.payment_settings import payment_settings_bp
+from routes.delivery_logs import delivery_logs_bp
 from routes.dashboard import dashboard_bp
 from routes.chat import chat_bp
 from routes.transactions import transactions_bp
@@ -126,6 +127,7 @@ def create_app():
     app.register_blueprint(packages_bp,     url_prefix='/api/packages')
     app.register_blueprint(menu_categories_bp, url_prefix='/api/menu-categories')
     app.register_blueprint(payment_settings_bp, url_prefix='/api/payment-settings')
+    app.register_blueprint(delivery_logs_bp, url_prefix='/api/delivery-logs')
     app.register_blueprint(dashboard_bp,    url_prefix='/api/dashboard')
     app.register_blueprint(chat_bp,         url_prefix='/api/chat')
     app.register_blueprint(transactions_bp, url_prefix='/api/transactions')

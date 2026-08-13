@@ -26,6 +26,7 @@ export default function CheckoutPage() {
   const router = useRouter();
 
   const [notes, setNotes] = useState("");
+  const [subscriptionStartDate, setSubscriptionStartDate] = useState("");
   const [paymentOption, setPaymentOption] = useState<'full' | 'dp'>('full');
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -70,6 +71,10 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !userAddress) return;
+    if (hasPackage && !subscriptionStartDate) {
+      toast.error("Tanggal mulai langganan wajib diisi untuk paket katering.");
+      return;
+    }
 
     setIsLoading(true);
 
@@ -83,6 +88,7 @@ export default function CheckoutPage() {
           customer_lat: userAddress.lat,
           customer_lng: userAddress.lng,
           customer_notes: notes,
+          subscription_start_date: hasPackage ? subscriptionStartDate : '',
           payment_option: paymentOption === 'dp' && canUseDp ? 'dp' : 'full',
           dp_percentage: paymentOption === 'dp' && canUseDp ? dpPercentage : 0,
           items: items.map(item => ({
@@ -234,6 +240,20 @@ export default function CheckoutPage() {
                 onChange={(e) => setNotes(e.target.value)}
               />
             </div>
+
+            {hasPackage && (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Tanggal Mulai Langganan <span className="text-red-400">*</span></label>
+                <input
+                  type="date"
+                  min={new Date().toISOString().slice(0, 10)}
+                  value={subscriptionStartDate}
+                  onChange={(e) => setSubscriptionStartDate(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#114C2A]/30 focus:border-[#114C2A] outline-none transition-all"
+                />
+                <p className="text-xs text-slate-400 mt-2">Log pengiriman harian akan dibuat sesuai durasi paket setelah pembayaran dikonfirmasi.</p>
+              </div>
+            )}
 
             {canUseDp && (
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">

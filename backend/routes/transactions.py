@@ -13,6 +13,7 @@ from xendit.apis import InvoiceApi
 from xendit.invoice.model.create_invoice_request import CreateInvoiceRequest
 from xendit.invoice.model.invoice_item import InvoiceItem
 from routes.stock_deduction import deduct_stock_for_transaction, restore_stock_for_transaction
+from routes.delivery_logs import generate_delivery_logs_for_transaction
 
 transactions_bp = Blueprint('transactions', __name__)
 
@@ -258,6 +259,7 @@ def create_transaction():
         'customer_lat': data.get('customer_lat', None),
         'customer_lng': data.get('customer_lng', None),
         'customer_notes': data.get('customer_notes', ''),
+        'subscription_start_date': data.get('subscription_start_date', ''),
         'items': items,
         'total': total,
         'payment_option': payment_option,
@@ -432,6 +434,9 @@ def xendit_webhook():
         if txn and not txn.get('stock_deducted'):
             deduct_result = deduct_stock_for_transaction(db, txn)
             print(f"[STOCK] Webhook deduct untuk {external_id}: {deduct_result['deducted_count']} bahan dikurangi")
+        if txn:
+            log_result = generate_delivery_logs_for_transaction(db, txn)
+            print(f"[DELIVERY] Webhook generate logs untuk {external_id}: {log_result['created']} log dibuat")
     
     print(f"[OK] Transaksi {external_id} diupdate ke status: {new_status}")
     return jsonify({'message': 'Webhook processed successfully'}), 200
@@ -490,6 +495,11 @@ def update_transaction_status(transaction_id):
         txn_updated = db['transactions'].find_one({'_id': ObjectId(transaction_id)})
         deduct_result = deduct_stock_for_transaction(db, txn_updated)
         print(f"[STOCK] Manual confirm deduct: {deduct_result['deducted_count']} bahan dikurangi")
+
+    if new_status == 'confirmed':
+        txn_updated = db['transactions'].find_one({'_id': ObjectId(transaction_id)})
+        log_result = generate_delivery_logs_for_transaction(db, txn_updated)
+        print(f"[DELIVERY] Manual confirm generate logs: {log_result['created']} log dibuat")
     
     # Restore stok saat order yang sudah dikonfirmasi dibatalkan
     if new_status == 'cancelled' and txn_before.get('stock_deducted'):
@@ -571,6 +581,10 @@ def check_payment_status(order_id):
                     txn_fresh = db['transactions'].find_one({'order_id': order_id})
                     deduct_result = deduct_stock_for_transaction(db, txn_fresh)
                     print(f"[STOCK] Sync deduct untuk {order_id}: {deduct_result['deducted_count']} bahan dikurangi")
+                if new_status == 'confirmed':
+                    txn_fresh = db['transactions'].find_one({'order_id': order_id})
+                    log_result = generate_delivery_logs_for_transaction(db, txn_fresh)
+                    print(f"[DELIVERY] Sync generate logs untuk {order_id}: {log_result['created']} log dibuat")
                 
                 # Re-fetch updated transaction
                 txn = db['transactions'].find_one({'order_id': order_id})

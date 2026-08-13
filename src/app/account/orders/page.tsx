@@ -58,6 +58,20 @@ interface Order {
   customer_notes: string;
 }
 
+interface DeliveryLog {
+  _id: string;
+  order_id: string;
+  package_name: string;
+  duration: string;
+  meal_type: string;
+  delivery_day: number;
+  total_days: number;
+  delivery_date: string;
+  status: string;
+  recipient_status: string;
+  receiver_name?: string;
+}
+
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ElementType; description: string }> = {
   pending_payment: {
     label: "Menunggu Pembayaran",
@@ -124,8 +138,24 @@ function formatDate(iso: string) {
   });
 }
 
+function formatShortDate(iso: string) {
+  return new Date(iso).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" });
+}
+
+const DELIVERY_LABELS: Record<string, string> = {
+  pending: "Menunggu",
+  prepared: "Disiapkan",
+  on_delivery: "Dikirim",
+  delivered: "Terkirim",
+  received: "Diterima",
+  failed: "Gagal",
+};
+
 function OrderCard({ order }: { order: Order }) {
   const [expanded, setExpanded] = useState(false);
+  const [deliveryLogs, setDeliveryLogs] = useState<DeliveryLog[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG["pending_payment"];
   const StatusIcon = cfg.icon;
 
@@ -134,6 +164,36 @@ function OrderCard({ order }: { order: Order }) {
   const currentStep = steps.indexOf(order.status);
   const isCancelled = order.status === "cancelled";
   const isPendingPayment = order.status === "pending_payment";
+
+  useEffect(() => {
+    if (!expanded || deliveryLogs.length > 0) return;
+    async function fetchDeliveryLogs() {
+      setLoadingLogs(true);
+      try {
+        const res = await authFetch(`${API_URL}/delivery-logs/my-logs?order_id=${order.order_id}`);
+        if (res.ok) setDeliveryLogs(await res.json());
+      } finally {
+        setLoadingLogs(false);
+      }
+    }
+    fetchDeliveryLogs();
+  }, [expanded, deliveryLogs.length, order.order_id]);
+
+  const confirmReceived = async (log: DeliveryLog) => {
+    setConfirmingId(log._id);
+    try {
+      const res = await authFetch(`${API_URL}/delivery-logs/${log._id}/confirm-received`, {
+        method: 'PUT',
+        body: JSON.stringify({ receiver_name: '' }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setDeliveryLogs(prev => prev.map(item => item._id === log._id ? updated : item));
+      }
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   return (
     <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all hover:shadow-md ${isCancelled ? "border-red-100 opacity-75" : "border-slate-100"}`}>
@@ -262,6 +322,39 @@ function OrderCard({ order }: { order: Order }) {
                 <span>Sisa tagihan</span>
                 <span>{order.is_remaining_paid ? 'Lunas' : formatCurrency(order.remaining_amount || 0)}</span>
               </div>
+            </div>
+          )}
+
+          {(loadingLogs || deliveryLogs.length > 0) && (
+            <div className="px-5 py-3 border-t border-slate-100">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Log Pengiriman Langganan</h3>
+              {loadingLogs ? (
+                <div className="text-xs text-slate-400 font-semibold flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" />Memuat log pengiriman...</div>
+              ) : (
+                <div className="space-y-2">
+                  {deliveryLogs.map(log => (
+                    <div key={log._id} className="bg-slate-50 rounded-xl p-3 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-bold text-sm text-slate-700">Hari {log.delivery_day}/{log.total_days} · {formatShortDate(log.delivery_date)}</p>
+                        <p className="text-xs text-slate-400">{log.package_name} · {DELIVERY_LABELS[log.status] || log.status}</p>
+                      </div>
+                      {log.status === 'delivered' && log.recipient_status !== 'confirmed' ? (
+                        <button
+                          onClick={() => confirmReceived(log)}
+                          disabled={confirmingId === log._id}
+                          className="px-3 py-2 bg-[#114C2A] text-white rounded-lg text-xs font-bold disabled:opacity-50"
+                        >
+                          {confirmingId === log._id ? 'Memproses...' : 'Konfirmasi Diterima'}
+                        </button>
+                      ) : (
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${log.status === 'received' ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-slate-400'}`}>
+                          {log.status === 'received' ? 'Sudah diterima' : DELIVERY_LABELS[log.status] || log.status}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
