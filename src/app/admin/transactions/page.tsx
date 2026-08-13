@@ -39,6 +39,8 @@ interface Transaction {
   pay_amount?: number;
   paid_amount?: number;
   is_remaining_paid?: boolean;
+  remaining_xendit_invoice_url?: string;
+  remaining_payment_status?: string;
   status: string;
   payment_method: string;
   payment_status: string;
@@ -715,6 +717,16 @@ export default function TransactionsPage() {
                     >
                       Tandai Sisa Lunas
                     </button>
+                  )}
+                  {!selectedTxn.is_remaining_paid && selectedTxn.remaining_xendit_invoice_url && (
+                    <a
+                      href={selectedTxn.remaining_xendit_invoice_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-center text-xs font-bold text-amber-700 hover:underline"
+                    >
+                      Buka invoice pelunasan Xendit
+                    </a>
                   )}
                 </div>
               )}

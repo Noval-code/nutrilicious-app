@@ -17,6 +17,7 @@ interface Transaction {
   remaining_amount?: number;
   pay_amount?: number;
   is_remaining_paid?: boolean;
+  remaining_payment_status?: string;
   xendit_invoice_url?: string;
   items: Array<{
     type?: 'package' | 'menu';
@@ -42,6 +43,7 @@ function formatRupiah(num: number): string {
 function CheckoutSuccessContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get("order_id");
+  const paymentType = searchParams.get("payment");
 
   const [txn, setTxn] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,13 +61,14 @@ function CheckoutSuccessContent() {
 
     const fetchStatus = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/transactions/check-status/${orderId}`);
+        const suffix = paymentType === 'remaining' ? '?payment=remaining' : '';
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/transactions/check-status/${orderId}${suffix}`);
         if (res.ok) {
           const data = await res.json();
           setTxn(data);
 
           // Jika masih pending, poll lagi (mungkin webhook belum datang)
-          if (data.status === "pending_payment" && attempts < maxAttempts) {
+          if (((paymentType === 'remaining' && !data.is_remaining_paid) || data.status === "pending_payment") && attempts < maxAttempts) {
             attempts++;
             setTimeout(fetchStatus, 3000);
           }
@@ -80,7 +83,7 @@ function CheckoutSuccessContent() {
     };
 
     fetchStatus();
-  }, [orderId]);
+  }, [orderId, paymentType]);
 
   if (loading) {
     return (
@@ -112,6 +115,8 @@ function CheckoutSuccessContent() {
   }
 
   const isPaid = txn?.status === "confirmed" || txn?.payment_status === "PAID" || txn?.payment_status === "SETTLED";
+  const isRemainingPayment = paymentType === 'remaining';
+  const isRemainingPaid = Boolean(txn?.is_remaining_paid);
   const isPending = txn?.status === "pending_payment";
 
   return (
@@ -119,7 +124,15 @@ function CheckoutSuccessContent() {
       <div className="container mx-auto px-4 py-12 max-w-lg">
         {/* Status Icon */}
         <div className="text-center mb-8">
-          {isPaid ? (
+          {isRemainingPayment && isRemainingPaid ? (
+            <>
+              <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="w-14 h-14 text-green-500" />
+              </div>
+              <h1 className="text-2xl font-extrabold text-slate-800 mb-2">Pelunasan Berhasil!</h1>
+              <p className="text-slate-500 text-sm">Sisa tagihan pesanan Anda sudah lunas.</p>
+            </>
+          ) : isPaid ? (
             <>
               <div className="relative inline-flex">
                 <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce-slow">
@@ -132,13 +145,13 @@ function CheckoutSuccessContent() {
               <h1 className="text-2xl font-extrabold text-slate-800 mb-2">Pembayaran Berhasil!</h1>
               <p className="text-slate-500 text-sm">Terima kasih, pesanan Anda sedang diproses.</p>
             </>
-          ) : isPending ? (
+          ) : isPending || (isRemainingPayment && !isRemainingPaid) ? (
             <>
               <div className="w-24 h-24 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Clock className="w-14 h-14 text-amber-500 animate-pulse" />
               </div>
               <h1 className="text-2xl font-extrabold text-slate-800 mb-2">Menunggu Pembayaran</h1>
-              <p className="text-slate-500 text-sm">Silakan selesaikan pembayaran Anda.</p>
+              <p className="text-slate-500 text-sm">Silakan selesaikan {isRemainingPayment ? 'pelunasan sisa tagihan' : 'pembayaran'} Anda.</p>
               {txn?.xendit_invoice_url && (
                 <a
                   href={txn.xendit_invoice_url}

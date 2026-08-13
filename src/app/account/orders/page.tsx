@@ -49,6 +49,8 @@ interface Order {
   remaining_amount?: number;
   pay_amount?: number;
   is_remaining_paid?: boolean;
+  remaining_xendit_invoice_url?: string;
+  remaining_payment_status?: string;
   status: string;
   payment_method: string;
   payment_status: string;
@@ -156,6 +158,7 @@ function OrderCard({ order }: { order: Order }) {
   const [deliveryLogs, setDeliveryLogs] = useState<DeliveryLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [creatingRemainingInvoice, setCreatingRemainingInvoice] = useState(false);
   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG["pending_payment"];
   const StatusIcon = cfg.icon;
 
@@ -192,6 +195,21 @@ function OrderCard({ order }: { order: Order }) {
       }
     } finally {
       setConfirmingId(null);
+    }
+  };
+
+  const handlePayRemaining = async () => {
+    setCreatingRemainingInvoice(true);
+    try {
+      const res = await authFetch(`${API_URL}/transactions/${order._id}/remaining-invoice`, { method: 'POST' });
+      if (res.ok) {
+        const updated = await res.json();
+        if (updated.remaining_xendit_invoice_url) {
+          window.location.href = updated.remaining_xendit_invoice_url;
+        }
+      }
+    } finally {
+      setCreatingRemainingInvoice(false);
     }
   };
 
@@ -322,6 +340,16 @@ function OrderCard({ order }: { order: Order }) {
                 <span>Sisa tagihan</span>
                 <span>{order.is_remaining_paid ? 'Lunas' : formatCurrency(order.remaining_amount || 0)}</span>
               </div>
+              {!order.is_remaining_paid && order.status !== 'cancelled' && (
+                <button
+                  onClick={handlePayRemaining}
+                  disabled={creatingRemainingInvoice}
+                  className="w-full mt-2 py-2.5 bg-amber-600 text-white rounded-xl font-bold text-sm hover:bg-amber-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {creatingRemainingInvoice ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                  Bayar Sisa Tagihan
+                </button>
+              )}
             </div>
           )}
 

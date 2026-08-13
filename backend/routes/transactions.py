@@ -80,6 +80,27 @@ def generate_order_id(db):
     return f"{prefix}{new_num:03d}"
 
 
+def update_remaining_payment(db, order_id, paid_amount=0, payment_method=''):
+    txn = db['transactions'].find_one({'order_id': order_id})
+    if not txn:
+        return None
+
+    total_paid = int(txn.get('paid_amount', txn.get('pay_amount', 0)) or 0)
+    remaining_amount = int(txn.get('remaining_amount', 0) or 0)
+    update_data = {
+        'is_remaining_paid': True,
+        'remaining_payment_status': 'PAID',
+        'remaining_paid_at': datetime.now(),
+        'paid_amount': max(total_paid, int(txn.get('dp_amount', txn.get('pay_amount', 0)) or 0)) + (paid_amount or remaining_amount),
+        'updated_at': datetime.now(),
+    }
+    if payment_method:
+        update_data['remaining_payment_method'] = payment_method
+
+    db['transactions'].update_one({'order_id': order_id}, {'$set': update_data})
+    return db['transactions'].find_one({'order_id': order_id})
+
+
 @transactions_bp.route('/', methods=['GET'])
 def get_transactions():
     """Get transaksi dengan pagination, search, dan filter status"""
@@ -395,6 +416,22 @@ def xendit_webhook():
     paid_amount = data.get('paid_amount', 0)
     
     print(f"[WEBHOOK] Xendit: order={external_id}, status={status}, method={payment_method}")
+
+    if external_id.endswith('-REMAINING'):
+        order_id = external_id[:-10]
+        if status in ['PAID', 'SETTLED']:
+            payment_method_text = f"{payment_method} - {payment_channel}" if payment_channel else payment_method
+            updated = update_remaining_payment(db, order_id, paid_amount, payment_method_text)
+            if not updated:
+                return jsonify({'error': 'Transaction not found'}), 404
+            print(f"[OK] Sisa tagihan {order_id} ditandai lunas")
+            return jsonify({'message': 'Remaining payment processed successfully'}), 200
+        if status == 'EXPIRED':
+            db['transactions'].update_one(
+                {'order_id': order_id},
+                {'$set': {'remaining_payment_status': 'EXPIRED', 'updated_at': datetime.now()}}
+            )
+        return jsonify({'message': f'Remaining payment status {status} acknowledged'}), 200
     
     # Map Xendit status ke status internal kita
     status_map = {
@@ -533,6 +570,30 @@ def check_payment_status(order_id):
     txn = db['transactions'].find_one({'order_id': order_id})
     if not txn:
         return jsonify({'error': 'Transaksi tidak ditemukan'}), 404
+
+    if request.args.get('payment') == 'remaining' and txn.get('remaining_xendit_invoice_id') and not txn.get('is_remaining_paid'):
+        try:
+            xendit_client = get_xendit_client()
+            invoice_api = InvoiceApi(xendit_client)
+            invoice = invoice_api.get_invoice_by_id(invoice_id=txn['remaining_xendit_invoice_id'])
+            xendit_status = normalize_xendit_status(invoice.status)
+
+            if xendit_status in ['PAID', 'SETTLED']:
+                paid_amount = getattr(invoice, 'paid_amount', None) or txn.get('remaining_amount', 0)
+                payment_method = ''
+                if hasattr(invoice, 'payment_method') and invoice.payment_method:
+                    payment_method = invoice.payment_method
+                if hasattr(invoice, 'payment_channel') and invoice.payment_channel:
+                    payment_method = f"{invoice.payment_method} - {invoice.payment_channel}"
+                txn = update_remaining_payment(db, order_id, paid_amount, payment_method) or txn
+            elif xendit_status == 'EXPIRED':
+                db['transactions'].update_one(
+                    {'order_id': order_id},
+                    {'$set': {'remaining_payment_status': 'EXPIRED', 'updated_at': datetime.now()}}
+                )
+                txn = db['transactions'].find_one({'order_id': order_id})
+        except Exception as e:
+            print(f"[WARNING] Gagal cek status pelunasan Xendit untuk {order_id}: {e}")
     
     # Jika masih pending_payment dan punya xendit_invoice_id, cek langsung ke Xendit
     if txn.get('status') == 'pending_payment' and txn.get('xendit_invoice_id'):
@@ -615,6 +676,66 @@ def mark_remaining_paid(transaction_id):
     db['transactions'].update_one({'_id': ObjectId(transaction_id)}, {'$set': update_data})
     updated = db['transactions'].find_one({'_id': ObjectId(transaction_id)})
     return jsonify(serialize_transaction(updated))
+
+
+@transactions_bp.route('/<transaction_id>/remaining-invoice', methods=['POST'])
+@jwt_required()
+def create_remaining_invoice(transaction_id):
+    """Buat invoice Xendit kedua untuk pelunasan sisa DP."""
+    db = get_db()
+    user_id = get_jwt_identity()
+    txn = db['transactions'].find_one({'_id': ObjectId(transaction_id), 'user_id': user_id})
+    if not txn:
+        return jsonify({'error': 'Transaksi tidak ditemukan'}), 404
+    if txn.get('payment_option') != 'dp':
+        return jsonify({'error': 'Transaksi ini bukan pembayaran DP'}), 400
+    if txn.get('is_remaining_paid'):
+        return jsonify({'error': 'Sisa tagihan sudah lunas'}), 400
+    if txn.get('status') == 'cancelled':
+        return jsonify({'error': 'Transaksi dibatalkan'}), 400
+
+    remaining_amount = int(txn.get('remaining_amount', 0) or 0)
+    if remaining_amount <= 0:
+        return jsonify({'error': 'Tidak ada sisa tagihan'}), 400
+
+    try:
+        xendit_client = get_xendit_client()
+        invoice_api = InvoiceApi(xendit_client)
+        frontend_url = current_app.config.get('FRONTEND_URL', 'http://localhost:3000')
+        external_id = f"{txn['order_id']}-REMAINING"
+
+        invoice_request = CreateInvoiceRequest(
+            external_id=external_id,
+            amount=float(remaining_amount),
+            description=f"Pelunasan Sisa Nutrilicious - {txn['order_id']}",
+            customer={
+                "given_names": txn.get('customer_name', ''),
+                "mobile_number": txn.get('customer_phone', ''),
+            },
+            items=[InvoiceItem(
+                name=f"Pelunasan sisa tagihan - {txn['order_id']}",
+                quantity=1.0,
+                price=float(remaining_amount),
+            )],
+            currency="IDR",
+            success_redirect_url=f"{frontend_url}/checkout/success?order_id={txn['order_id']}&payment=remaining",
+            failure_redirect_url=f"{frontend_url}/checkout/failed?order_id={txn['order_id']}&payment=remaining",
+        )
+
+        invoice_response = invoice_api.create_invoice(create_invoice_request=invoice_request)
+        update_data = {
+            'remaining_xendit_invoice_id': invoice_response.id,
+            'remaining_xendit_invoice_url': invoice_response.invoice_url,
+            'remaining_payment_status': 'PENDING',
+            'updated_at': datetime.now(),
+        }
+        db['transactions'].update_one({'_id': txn['_id']}, {'$set': update_data})
+        updated = db['transactions'].find_one({'_id': txn['_id']})
+        return jsonify(serialize_transaction(updated)), 201
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': f'Gagal membuat invoice pelunasan: {e}'}), 500
 
 
 @transactions_bp.route('/stats', methods=['GET'])
