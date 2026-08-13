@@ -21,6 +21,9 @@ export interface CartItem {
   duration: string;
   meal_type: string;
   price: string; // formatted price e.g. "150.000"
+  original_price?: string;
+  promo_price?: string;
+  discount_percent?: number;
   quantity: number;
 }
 

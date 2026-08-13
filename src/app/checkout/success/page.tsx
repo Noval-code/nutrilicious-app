@@ -31,6 +31,9 @@ interface Transaction {
     meal_type: string;
     quantity: number;
     price: number;
+    original_price?: number;
+    promo_price?: number;
+    discount_percent?: number;
   }>;
   customer_name: string;
   created_at: string;
@@ -209,7 +212,15 @@ function CheckoutSuccessContent() {
                         : `${item.duration} · ${item.meal_type} · x${item.quantity}`}
                     </p>
                   </div>
-                  <p className="text-sm font-bold text-slate-700">Rp{formatRupiah(item.price * item.quantity)}</p>
+                  <div className="text-right">
+                    {item.original_price && item.original_price > item.price && (
+                      <p className="text-[10px] font-semibold text-slate-400 line-through">Rp{formatRupiah(item.original_price * item.quantity)}</p>
+                    )}
+                    <p className="text-sm font-bold text-slate-700">Rp{formatRupiah(item.price * item.quantity)}</p>
+                    {item.discount_percent ? (
+                      <p className="text-[10px] font-black text-[#F9A826]">Hemat {item.discount_percent}%</p>
+                    ) : null}
+                  </div>
                 </div>
               ))}
 

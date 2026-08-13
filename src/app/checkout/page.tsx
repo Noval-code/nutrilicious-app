@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { authFetch } from "@/lib/authFetch";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { MapPin, Edit3, ArrowLeft, CreditCard, Shield, Loader2 } from "lucide-react";
+import { MapPin, Edit3, ArrowLeft, CreditCard, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -18,6 +18,10 @@ interface PaymentSettings {
 
 function formatRupiah(num: number): string {
   return num.toLocaleString('id-ID');
+}
+
+function formatPriceString(price: string): string {
+  return formatRupiah(parseInt(String(price || '').replace(/\./g, ''), 10) || 0);
 }
 
 export default function CheckoutPage() {
@@ -104,6 +108,9 @@ export default function CheckoutPage() {
             duration: item.duration,
             meal_type: item.meal_type,
             price: item.price.toString(),
+            original_price: item.original_price || item.price.toString(),
+            promo_price: item.promo_price || '',
+            discount_percent: item.discount_percent || 0,
             quantity: item.quantity
           }))
         }),
@@ -224,7 +231,15 @@ export default function CheckoutPage() {
                           : `${item.duration} · ${item.meal_type} · x${item.quantity}`}
                       </p>
                     </div>
-                    <p className="font-bold text-slate-700 text-sm">Rp{item.price}</p>
+                    <div className="text-right">
+                      {item.original_price && item.original_price !== item.price && (
+                        <p className="text-[10px] font-semibold text-slate-400 line-through">Rp{formatPriceString(item.original_price)}</p>
+                      )}
+                      <p className="font-bold text-slate-700 text-sm">Rp{formatPriceString(item.price)}</p>
+                      {item.discount_percent ? (
+                        <p className="text-[10px] font-black text-[#F9A826]">Hemat {item.discount_percent}%</p>
+                      ) : null}
+                    </div>
                   </div>
                 ))}
               </div>

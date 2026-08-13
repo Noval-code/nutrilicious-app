@@ -9,6 +9,10 @@ function formatRupiah(num: number): string {
   return num.toLocaleString('id-ID');
 }
 
+function formatPriceString(price: string): string {
+  return formatRupiah(parseInt(String(price || '').replace(/\./g, ''), 10) || 0);
+}
+
 export function CartWidget() {
   const { items, totalItems, totalPrice, isCartOpen, setIsCartOpen, removeItem, updateQuantity, userAddress, openAddressModal } = useCart();
 
@@ -150,9 +154,17 @@ export function CartWidget() {
                           <Plus className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <p className="font-black text-[#114C2A] text-sm">
-                        Rp{item.price}
-                      </p>
+                      <div className="text-right">
+                        {item.original_price && item.original_price !== item.price && (
+                          <p className="text-[10px] font-semibold text-slate-400 line-through">Rp{formatPriceString(item.original_price)}</p>
+                        )}
+                        <p className="font-black text-[#114C2A] text-sm">
+                          Rp{formatPriceString(item.price)}
+                        </p>
+                        {item.discount_percent ? (
+                          <p className="text-[10px] font-black text-[#F9A826]">Hemat {item.discount_percent}%</p>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 ))

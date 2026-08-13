@@ -12,6 +12,11 @@ interface ItemDetail {
   unit: string;
 }
 
+interface EventDiscountTier {
+  min_qty: number;
+  discount_percent: number;
+}
+
 interface Menu {
   _id?: string;
   title: string;
@@ -26,6 +31,11 @@ interface Menu {
   fat?: number;
   sugar?: number;
   price?: number;
+  promo_price?: number;
+  promo_start_date?: string;
+  promo_end_date?: string;
+  is_promo_active?: boolean;
+  event_discount_tiers?: EventDiscountTier[];
   is_orderable?: boolean;
   is_available?: boolean;
 }
@@ -54,6 +64,11 @@ const emptyForm = (): Menu => ({
   fat: 0,
   sugar: 0,
   price: 0,
+  promo_price: 0,
+  promo_start_date: '',
+  promo_end_date: '',
+  is_promo_active: false,
+  event_discount_tiers: [],
   is_orderable: false,
   is_available: true,
 });
@@ -243,6 +258,11 @@ export default function MenusPage() {
       fat: menu.fat || 0,
       sugar: menu.sugar || 0,
       price: menu.price || 0,
+      promo_price: menu.promo_price || 0,
+      promo_start_date: menu.promo_start_date || '',
+      promo_end_date: menu.promo_end_date || '',
+      is_promo_active: menu.is_promo_active || false,
+      event_discount_tiers: menu.event_discount_tiers || [],
       is_orderable: menu.is_orderable || false,
       is_available: menu.is_available !== false,
     });
@@ -299,6 +319,29 @@ export default function MenusPage() {
     });
   };
 
+  const handleAddEventTier = () => {
+    setFormData(prev => ({
+      ...prev,
+      event_discount_tiers: [...(prev.event_discount_tiers || []), { min_qty: 20, discount_percent: 10 }],
+    }));
+  };
+
+  const handleUpdateEventTier = (index: number, field: keyof EventDiscountTier, value: number) => {
+    setFormData(prev => ({
+      ...prev,
+      event_discount_tiers: (prev.event_discount_tiers || []).map((tier, idx) => (
+        idx === index ? { ...tier, [field]: value } : tier
+      )),
+    }));
+  };
+
+  const handleRemoveEventTier = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      event_discount_tiers: (prev.event_discount_tiers || []).filter((_, idx) => idx !== index),
+    }));
+  };
+
   // Save (create or update)
   const handleSave = async () => {
     if (!formData.title.trim()) {
@@ -333,6 +376,17 @@ export default function MenusPage() {
         fat: Number(formData.fat) || 0,
         sugar: Number(formData.sugar) || 0,
         price: Number(formData.price) || 0,
+        promo_price: Number(formData.promo_price) || 0,
+        promo_start_date: formData.promo_start_date || '',
+        promo_end_date: formData.promo_end_date || '',
+        is_promo_active: Boolean(formData.is_promo_active),
+        event_discount_tiers: (formData.event_discount_tiers || [])
+          .map(tier => ({
+            min_qty: Number(tier.min_qty) || 0,
+            discount_percent: Number(tier.discount_percent) || 0,
+          }))
+          .filter(tier => tier.min_qty > 0 && tier.discount_percent > 0)
+          .sort((a, b) => a.min_qty - b.min_qty),
         is_orderable: Boolean(formData.is_orderable),
         is_available: Boolean(formData.is_available),
       };
@@ -600,10 +654,20 @@ export default function MenusPage() {
                     <td className="p-4">
                       {menu.is_orderable ? (
                         <div>
-                          <p className="font-bold text-[#114C2A] text-sm">Rp{Number(menu.price || 0).toLocaleString('id-ID')}</p>
+                          {menu.is_promo_active && menu.promo_price ? (
+                            <>
+                              <p className="text-[10px] font-semibold text-slate-400 line-through">Rp{Number(menu.price || 0).toLocaleString('id-ID')}</p>
+                              <p className="font-bold text-[#114C2A] text-sm">Rp{Number(menu.promo_price || 0).toLocaleString('id-ID')}</p>
+                            </>
+                          ) : (
+                            <p className="font-bold text-[#114C2A] text-sm">Rp{Number(menu.price || 0).toLocaleString('id-ID')}</p>
+                          )}
                           <p className={`text-[10px] font-bold ${menu.is_available === false ? 'text-red-500' : 'text-emerald-600'}`}>
                             {menu.is_available === false ? 'Tidak tersedia' : 'Bisa dipesan'}
                           </p>
+                          {menu.event_discount_tiers && menu.event_discount_tiers.length > 0 && (
+                            <p className="text-[10px] font-bold text-amber-600">Diskon acara bertingkat</p>
+                          )}
                         </div>
                       ) : (
                         <span className="text-xs font-semibold text-slate-400">Tidak dijual perporsi</span>
@@ -857,27 +921,118 @@ export default function MenusPage() {
                     />
                   </div>
                   {formData.is_orderable && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-500 mb-1">Harga per porsi</label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={formData.price || ''}
-                          onChange={(e) => setFormData(prev => ({ ...prev, price: Number(e.target.value) || 0 }))}
-                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F9A826] font-medium bg-white"
-                          placeholder="35000"
-                        />
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-500 mb-1">Harga normal per porsi</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={formData.price || ''}
+                            onChange={(e) => setFormData(prev => ({ ...prev, price: Number(e.target.value) || 0 }))}
+                            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F9A826] font-medium bg-white"
+                            placeholder="35000"
+                          />
+                        </div>
+                        <label className="flex items-center gap-2 pt-6 text-sm font-bold text-slate-600">
+                          <input
+                            type="checkbox"
+                            checked={formData.is_available !== false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, is_available: e.target.checked }))}
+                            className="w-4 h-4 accent-[#114C2A]"
+                          />
+                          Tersedia
+                        </label>
                       </div>
-                      <label className="flex items-center gap-2 pt-6 text-sm font-bold text-slate-600">
-                        <input
-                          type="checkbox"
-                          checked={formData.is_available !== false}
-                          onChange={(e) => setFormData(prev => ({ ...prev, is_available: e.target.checked }))}
-                          className="w-4 h-4 accent-[#114C2A]"
-                        />
-                        Tersedia
-                      </label>
+
+                      <div className="bg-white rounded-2xl border border-emerald-100 p-3 space-y-3">
+                        <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(formData.is_promo_active)}
+                            onChange={(e) => setFormData(prev => ({ ...prev, is_promo_active: e.target.checked }))}
+                            className="w-4 h-4 accent-[#114C2A]"
+                          />
+                          Aktifkan promo menu satuan
+                        </label>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-500 mb-1">Harga promo</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={formData.promo_price || ''}
+                              onChange={(e) => setFormData(prev => ({ ...prev, promo_price: Number(e.target.value) || 0 }))}
+                              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F9A826] font-medium bg-white"
+                              placeholder="29000"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-500 mb-1">Mulai promo</label>
+                            <input
+                              type="date"
+                              value={formData.promo_start_date || ''}
+                              onChange={(e) => setFormData(prev => ({ ...prev, promo_start_date: e.target.value }))}
+                              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F9A826] font-medium bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-500 mb-1">Selesai promo</label>
+                            <input
+                              type="date"
+                              value={formData.promo_end_date || ''}
+                              onChange={(e) => setFormData(prev => ({ ...prev, promo_end_date: e.target.value }))}
+                              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F9A826] font-medium bg-white"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-2xl border border-amber-100 p-3 space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-bold text-slate-700">Diskon borongan/acara</p>
+                            <p className="text-xs text-slate-400">Potongan bertingkat berdasarkan jumlah porsi.</p>
+                          </div>
+                          <button type="button" onClick={handleAddEventTier} className="text-xs font-bold px-3 py-2 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100">
+                            + Tier
+                          </button>
+                        </div>
+                        {(formData.event_discount_tiers || []).length === 0 ? (
+                          <p className="text-xs text-slate-400 font-semibold">Belum ada diskon acara.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {(formData.event_discount_tiers || []).map((tier, idx) => (
+                              <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                                <div>
+                                  <label className="block text-xs font-semibold text-slate-500 mb-1">Minimal porsi</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={tier.min_qty || ''}
+                                    onChange={(e) => handleUpdateEventTier(idx, 'min_qty', Number(e.target.value) || 0)}
+                                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F9A826] font-medium bg-white"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold text-slate-500 mb-1">Diskon (%)</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="100"
+                                    value={tier.discount_percent || ''}
+                                    onChange={(e) => handleUpdateEventTier(idx, 'discount_percent', Number(e.target.value) || 0)}
+                                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F9A826] font-medium bg-white"
+                                  />
+                                </div>
+                                <button type="button" onClick={() => handleRemoveEventTier(idx)} className="h-10 px-3 rounded-xl bg-red-50 text-red-500 font-bold hover:bg-red-100">
+                                  Hapus
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

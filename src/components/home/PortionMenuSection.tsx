@@ -25,6 +25,11 @@ interface PortionMenu {
   fat?: number;
   sugar?: number;
   price: number;
+  promo_price?: number;
+  promo_start_date?: string;
+  promo_end_date?: string;
+  is_promo_active?: boolean;
+  event_discount_tiers?: { min_qty: number; discount_percent: number }[];
 }
 
 function formatRupiah(value: number) {
@@ -33,6 +38,37 @@ function formatRupiah(value: number) {
 
 function todayValue() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function isPromoActive(menu: PortionMenu) {
+  if (!menu.is_promo_active || !menu.promo_price || menu.promo_price <= 0) return false;
+  const today = todayValue();
+  if (menu.promo_start_date && today < menu.promo_start_date) return false;
+  if (menu.promo_end_date && today > menu.promo_end_date) return false;
+  return true;
+}
+
+function getEventDiscount(menu: PortionMenu, quantity: number) {
+  return [...(menu.event_discount_tiers || [])]
+    .filter(tier => quantity >= Number(tier.min_qty || 0))
+    .sort((a, b) => Number(b.min_qty || 0) - Number(a.min_qty || 0))[0]?.discount_percent || 0;
+}
+
+function getMenuPricing(menu: PortionMenu, orderType: 'regular' | 'event', quantity: number) {
+  const originalPrice = Number(menu.price || 0);
+  if (orderType === 'event') {
+    const discountPercent = getEventDiscount(menu, quantity);
+    const finalPrice = Math.max(0, Math.round(originalPrice - (originalPrice * discountPercent / 100)));
+    return { originalPrice, finalPrice, promoPrice: 0, discountPercent };
+  }
+  const activePromo = isPromoActive(menu);
+  const promoPrice = activePromo ? Number(menu.promo_price || 0) : 0;
+  return {
+    originalPrice,
+    finalPrice: activePromo ? promoPrice : originalPrice,
+    promoPrice,
+    discountPercent: activePromo && originalPrice > 0 ? Math.round(((originalPrice - promoPrice) / originalPrice) * 100) : 0,
+  };
 }
 
 export function PortionMenuSection() {
@@ -60,8 +96,8 @@ export function PortionMenuSection() {
       if (!menuRes.ok) throw new Error('Gagal memuat menu perporsi');
       setCategories(await catRes.json());
       setMenus(await menuRes.json());
-    } catch (err: any) {
-      setError(err.message || 'Terjadi kesalahan saat memuat menu perporsi');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat memuat menu perporsi');
     } finally {
       setLoading(false);
     }
@@ -87,12 +123,17 @@ export function PortionMenuSection() {
       return;
     }
 
+    const pricing = getMenuPricing(menu, orderType, quantity);
+
     addItem({
       type: 'menu',
       name: menu.title,
       slug: menu._id,
       category: categories.find(cat => cat.slug === menu.category)?.name || menu.category,
-      price: String(menu.price),
+      price: String(pricing.finalPrice),
+      original_price: String(pricing.originalPrice),
+      promo_price: pricing.promoPrice ? String(pricing.promoPrice) : '',
+      discount_percent: pricing.discountPercent,
       order_type: orderType,
       event_date: orderType === 'event' ? eventDate : '',
       event_time: orderType === 'event' ? eventTime : '',
@@ -153,6 +194,8 @@ export function PortionMenuSection() {
                 const quantity = getQuantity(menu._id);
                 const orderType = getOrderType(menu._id);
                 const justAdded = addedItems[menu._id];
+                const pricing = getMenuPricing(menu, orderType, quantity);
+                const hasDiscount = pricing.finalPrice < pricing.originalPrice;
 
                 return (
                   <div key={menu._id} className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col">
@@ -169,7 +212,15 @@ export function PortionMenuSection() {
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-xs font-semibold text-slate-400">per porsi</p>
-                          <p className="font-black text-[#114C2A]">Rp{formatRupiah(Number(menu.price || 0))}</p>
+                          {hasDiscount && (
+                            <p className="text-xs font-semibold text-slate-400 line-through">Rp{formatRupiah(pricing.originalPrice)}</p>
+                          )}
+                          <p className="font-black text-[#114C2A]">Rp{formatRupiah(pricing.finalPrice)}</p>
+                          {hasDiscount && (
+                            <p className="text-[10px] font-black text-[#F9A826]">
+                              {orderType === 'event' ? `Diskon acara ${pricing.discountPercent}%` : 'Promo'}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -186,12 +237,19 @@ export function PortionMenuSection() {
                         </div>
 
                         {orderType === 'event' && (
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="relative">
-                              <CalendarDays className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                              <input type="date" min={todayValue()} value={eventDates[menu._id] || ''} onChange={(e) => setEventDates(prev => ({ ...prev, [menu._id]: e.target.value }))} className="w-full border border-gray-200 rounded-xl pl-9 pr-2 py-2 text-xs font-semibold" />
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="relative">
+                                <CalendarDays className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input type="date" min={todayValue()} value={eventDates[menu._id] || ''} onChange={(e) => setEventDates(prev => ({ ...prev, [menu._id]: e.target.value }))} className="w-full border border-gray-200 rounded-xl pl-9 pr-2 py-2 text-xs font-semibold" />
+                              </div>
+                              <input type="time" value={eventTimes[menu._id] || ''} onChange={(e) => setEventTimes(prev => ({ ...prev, [menu._id]: e.target.value }))} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold" />
                             </div>
-                            <input type="time" value={eventTimes[menu._id] || ''} onChange={(e) => setEventTimes(prev => ({ ...prev, [menu._id]: e.target.value }))} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold" />
+                            {menu.event_discount_tiers && menu.event_discount_tiers.length > 0 && (
+                              <p className="text-[11px] font-bold text-amber-600 bg-amber-50 rounded-lg px-2 py-1">
+                                Diskon acara mengikuti jumlah porsi. Saat ini {pricing.discountPercent > 0 ? `${pricing.discountPercent}%` : 'belum memenuhi minimal porsi'}.
+                              </p>
+                            )}
                           </div>
                         )}
 

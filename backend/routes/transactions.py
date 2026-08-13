@@ -49,6 +49,14 @@ def clamp_dp_percentage(value):
     return max(1, min(99, percentage))
 
 
+def parse_price(value, default=0):
+    try:
+        cleaned = str(value if value not in [None, ''] else default).replace('.', '')
+        return int(cleaned or default)
+    except (TypeError, ValueError):
+        return int(default or 0)
+
+
 def serialize_transaction(txn):
     """Convert MongoDB document to JSON-serializable dict"""
     txn['_id'] = str(txn['_id'])
@@ -231,7 +239,10 @@ def create_transaction():
     items = []
     for item in data['items']:
         # Harga dari frontend dapat berbentuk string rupiah dengan titik pemisah.
-        price = int(str(item.get('price', '0')).replace('.', ''))
+        price = parse_price(item.get('price', 0))
+        original_price = parse_price(item.get('original_price', price), price)
+        promo_price = parse_price(item.get('promo_price', 0))
+        discount_percent = max(0, min(100, parse_price(item.get('discount_percent', 0))))
         qty = int(item.get('quantity', 1))
         subtotal = price * qty
         total += subtotal
@@ -250,6 +261,10 @@ def create_transaction():
             'duration': item.get('duration', ''),
             'meal_type': item.get('meal_type', ''),
             'price': price,
+            'original_price': original_price,
+            'promo_price': promo_price,
+            'discount_percent': discount_percent,
+            'final_price': price,
             'quantity': qty,
             'subtotal': subtotal,
         })

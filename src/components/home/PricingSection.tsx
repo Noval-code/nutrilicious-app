@@ -1,12 +1,36 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { CalendarDays, Utensils, UtensilsCrossed, CheckCircle2, ShoppingCart, Check, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { CalendarDays, Utensils, UtensilsCrossed, CheckCircle2, ShoppingCart, Check, AlertCircle, RefreshCw } from 'lucide-react';
 import { useCart } from '@/components/cart/CartProvider';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 
 const mealTypesList = ["Lunch", "Dinner", "Lunch & Dinner"];
+
+function priceToNumber(value: string) {
+    return parseInt(String(value || '').replace(/\./g, ''), 10) || 0;
+}
+
+function formatPriceDisplay(value: string) {
+    const numeric = priceToNumber(value);
+    return numeric > 0 ? numeric.toLocaleString('id-ID') : '0';
+}
+
+function getPackageFinalPrice(pricing: { normal: string; promo: string }) {
+    return priceToNumber(pricing.promo) > 0 ? pricing.promo : pricing.normal;
+}
+
+function hasPackagePromo(pricing: { normal: string; promo: string }) {
+    return priceToNumber(pricing.promo) > 0 && priceToNumber(pricing.promo) < priceToNumber(pricing.normal);
+}
+
+function promoDiscountPercent(pricing: { normal: string; promo: string }) {
+    const normal = priceToNumber(pricing.normal);
+    const promo = priceToNumber(pricing.promo);
+    if (!normal || !promo || promo >= normal) return 0;
+    return Math.round(((normal - promo) / normal) * 100);
+}
 
 interface PackageData {
     _id: string;
@@ -37,8 +61,8 @@ export function PricingSection() {
             setPackages(data);
             const firstDuration = data.flatMap(pkg => Object.keys(pkg.pricing || {}))[0];
             if (firstDuration) setSelectedDay(firstDuration);
-        } catch (err: any) {
-            setError(err.message || 'Terjadi kesalahan saat memuat data');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat memuat data');
         } finally {
             setLoading(false);
         }
@@ -60,7 +84,10 @@ export function PricingSection() {
             package_slug: pkg.slug,
             duration: selectedDay,
             meal_type: selectedMeal,
-            price: pricing.promo,
+            price: getPackageFinalPrice(pricing),
+            original_price: pricing.normal,
+            promo_price: hasPackagePromo(pricing) ? pricing.promo : '',
+            discount_percent: promoDiscountPercent(pricing),
         });
 
         // Show "added" animation
@@ -219,13 +246,20 @@ export function PricingSection() {
                                                 <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#114C2A]/5 to-[#F9A826]/10 rounded-bl-full -mr-4 -mt-4 opacity-50 z-0"/>
                                                 
                                                 <div className="relative z-10">
-                                                    <div className="text-xs text-slate-400 font-semibold line-through mb-1">
-                                                        Rp{pricing.normal}
-                                                    </div>
+                                                    {hasPackagePromo(pricing) && (
+                                                        <div className="text-xs text-slate-400 font-semibold line-through mb-1">
+                                                            Rp{formatPriceDisplay(pricing.normal)}
+                                                        </div>
+                                                    )}
                                                     <div className="flex items-baseline gap-1">
                                                         <span className="text-sm md:text-base font-bold text-[#114C2A]">Rp</span>
-                                                        <span className="text-3xl md:text-4xl font-black text-[#114C2A] tracking-tighter">{pricing.promo}</span>
+                                                        <span className="text-3xl md:text-4xl font-black text-[#114C2A] tracking-tighter">{formatPriceDisplay(getPackageFinalPrice(pricing))}</span>
                                                     </div>
+                                                    {hasPackagePromo(pricing) && (
+                                                        <div className="text-xs font-black text-[#F9A826] mt-1">
+                                                            Promo hemat {promoDiscountPercent(pricing)}%
+                                                        </div>
+                                                    )}
                                                     <div className="text-xs md:text-sm text-slate-500 mt-2 font-medium flex items-center gap-1">
                                                         <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F9A826]"></span>
                                                         Untuk {selectedDay} ({selectedMeal})

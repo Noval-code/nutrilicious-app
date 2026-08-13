@@ -31,6 +31,11 @@ def serialize_menu(menu):
     menu['fat'] = menu.get('fat', 0)
     menu['sugar'] = menu.get('sugar', 0)
     menu['price'] = menu.get('price', 0)
+    menu['promo_price'] = menu.get('promo_price', 0)
+    menu['promo_start_date'] = menu.get('promo_start_date', '')
+    menu['promo_end_date'] = menu.get('promo_end_date', '')
+    menu['is_promo_active'] = menu.get('is_promo_active', False)
+    menu['event_discount_tiers'] = menu.get('event_discount_tiers', [])
     menu['is_orderable'] = menu.get('is_orderable', False)
     menu['is_available'] = menu.get('is_available', True)
     return menu
@@ -104,6 +109,11 @@ def create_menu():
         'fat': data.get('fat', 0),
         'sugar': data.get('sugar', 0),
         'price': data.get('price', 0),
+        'promo_price': data.get('promo_price', 0),
+        'promo_start_date': data.get('promo_start_date', ''),
+        'promo_end_date': data.get('promo_end_date', ''),
+        'is_promo_active': data.get('is_promo_active', False),
+        'event_discount_tiers': data.get('event_discount_tiers', []),
         'is_orderable': data.get('is_orderable', False),
         'is_available': data.get('is_available', True),
     }
@@ -121,7 +131,7 @@ def update_menu(menu_id):
     data = request.get_json()
     
     update_data = {}
-    for field in ['title', 'category', 'items', 'item_details', 'image_url', 'image_public_id', 'calories', 'protein', 'carbs', 'fat', 'sugar', 'price', 'is_orderable', 'is_available']:
+    for field in ['title', 'category', 'items', 'item_details', 'image_url', 'image_public_id', 'calories', 'protein', 'carbs', 'fat', 'sugar', 'price', 'promo_price', 'promo_start_date', 'promo_end_date', 'is_promo_active', 'event_discount_tiers', 'is_orderable', 'is_available']:
         if field in data:
             update_data[field] = data[field]
     
