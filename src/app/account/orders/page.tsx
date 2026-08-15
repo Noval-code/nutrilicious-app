@@ -75,6 +75,8 @@ interface Order {
 interface DeliveryLog {
   _id: string;
   order_id: string;
+  delivery_type?: 'subscription' | 'single_menu' | 'event';
+  item_name?: string;
   package_name: string;
   duration: string;
   meal_type: string;
@@ -84,6 +86,9 @@ interface DeliveryLog {
   status: string;
   recipient_status: string;
   receiver_name?: string;
+  delivery_proof_url?: string;
+  delivery_note?: string;
+  event_time?: string;
   default_menus?: Record<'lunch' | 'dinner', MenuSummary | undefined>;
   custom_menus?: Record<'lunch' | 'dinner', (MenuSummary & { original_menu_title?: string }) | undefined>;
 }
@@ -442,6 +447,9 @@ function OrderCard({ order }: { order: Order }) {
                       <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="font-bold text-sm text-slate-700">Hari {log.delivery_day}/{log.total_days} · {formatShortDate(log.delivery_date)}</p>
+                        {log.delivery_type && log.delivery_type !== 'subscription' && (
+                          <p className="text-xs text-slate-400">{log.item_name || log.package_name}{log.event_time ? ` · ${log.event_time}` : ''}</p>
+                        )}
                       </div>
                       {log.status === 'delivered' && log.recipient_status !== 'confirmed' ? (
                         <button
@@ -483,6 +491,16 @@ function OrderCard({ order }: { order: Order }) {
                               </div>
                             );
                           })}
+                        </div>
+                      )}
+                      {(log.delivery_proof_url || log.delivery_note) && (
+                        <div className="border-t border-white pt-2 text-xs space-y-1">
+                          {log.delivery_proof_url && (
+                            <a href={log.delivery_proof_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-[#114C2A] hover:underline">
+                              <ExternalLink className="w-3 h-3" /> Lihat Bukti Pengiriman
+                            </a>
+                          )}
+                          {log.delivery_note && <p className="text-slate-500">Catatan: {log.delivery_note}</p>}
                         </div>
                       )}
                     </div>

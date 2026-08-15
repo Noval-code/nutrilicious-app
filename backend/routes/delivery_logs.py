@@ -31,6 +31,17 @@ def parse_start_date(value):
         return datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
 
+def parse_delivery_date(value, fallback=None):
+    if value:
+        try:
+            return datetime.strptime(str(value)[:10], '%Y-%m-%d')
+        except (ValueError, TypeError):
+            pass
+    if isinstance(fallback, datetime):
+        return fallback.replace(hour=0, minute=0, second=0, microsecond=0)
+    return datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+
 def menu_summary(menu):
     if not menu:
         return None
@@ -96,14 +107,14 @@ def serialize_log(log):
     log['_id'] = str(log['_id'])
     if isinstance(log.get('transaction_id'), ObjectId):
         log['transaction_id'] = str(log['transaction_id'])
-    for field in ['delivery_date', 'created_at', 'updated_at', 'received_at']:
+    for field in ['delivery_date', 'created_at', 'updated_at', 'received_at', 'delivered_at']:
         if field in log and isinstance(log[field], datetime):
             log[field] = log[field].isoformat()
     return log
 
 
 def generate_delivery_logs_for_transaction(db, transaction):
-    """Buat log pengiriman harian untuk item paket langganan yang sudah confirmed."""
+    """Buat log pengiriman untuk paket langganan, menu satuan, dan pesanan acara."""
     txn_id = transaction.get('_id')
     if not txn_id:
         return {'created': 0}
@@ -117,36 +128,67 @@ def generate_delivery_logs_for_transaction(db, transaction):
     logs = []
 
     for item in transaction.get('items', []):
-        if item.get('type', 'package') != 'package':
+        item_type = item.get('type', 'package')
+        base_log = {
+            'transaction_id': txn_id,
+            'order_id': transaction.get('order_id', ''),
+            'user_id': transaction.get('user_id', ''),
+            'customer_name': transaction.get('customer_name', ''),
+            'customer_phone': transaction.get('customer_phone', ''),
+            'customer_address': transaction.get('customer_address', ''),
+            'status': 'pending',
+            'recipient_status': 'pending',
+            'receiver_name': '',
+            'admin_note': '',
+            'delivery_proof_url': '',
+            'delivery_proof_public_id': '',
+            'delivery_note': '',
+            'delivered_at': None,
+            'created_at': now,
+            'updated_at': now,
+        }
+
+        if item_type == 'package':
+            total_days = parse_duration_days(item.get('duration', ''))
+            for day in range(1, total_days + 1):
+                delivery_date = start_date + timedelta(days=day - 1)
+                default_menus = get_default_menus_for_day(db, item.get('package_slug', ''), day, item.get('meal_type', ''))
+                logs.append({
+                    **base_log,
+                    'delivery_type': 'subscription',
+                    'item_name': item.get('package_name', '') or item.get('name', ''),
+                    'package_name': item.get('package_name', ''),
+                    'package_slug': item.get('package_slug', ''),
+                    'duration': item.get('duration', ''),
+                    'meal_type': item.get('meal_type', ''),
+                    'default_menus': default_menus,
+                    'custom_menus': {},
+                    'delivery_day': day,
+                    'total_days': total_days,
+                    'delivery_date': delivery_date,
+                })
             continue
 
-        total_days = parse_duration_days(item.get('duration', ''))
-        for day in range(1, total_days + 1):
-            delivery_date = start_date + timedelta(days=day - 1)
-            default_menus = get_default_menus_for_day(db, item.get('package_slug', ''), day, item.get('meal_type', ''))
-            logs.append({
-                'transaction_id': txn_id,
-                'order_id': transaction.get('order_id', ''),
-                'user_id': transaction.get('user_id', ''),
-                'customer_name': transaction.get('customer_name', ''),
-                'customer_phone': transaction.get('customer_phone', ''),
-                'customer_address': transaction.get('customer_address', ''),
-                'package_name': item.get('package_name', ''),
-                'package_slug': item.get('package_slug', ''),
-                'duration': item.get('duration', ''),
-                'meal_type': item.get('meal_type', ''),
-                'default_menus': default_menus,
-                'custom_menus': {},
-                'delivery_day': day,
-                'total_days': total_days,
-                'delivery_date': delivery_date,
-                'status': 'pending',
-                'recipient_status': 'pending',
-                'receiver_name': '',
-                'admin_note': '',
-                'created_at': now,
-                'updated_at': now,
-            })
+        delivery_type = 'event' if item.get('order_type') == 'event' else 'single_menu'
+        delivery_date = parse_delivery_date(item.get('event_date'), transaction.get('created_at'))
+        logs.append({
+            **base_log,
+            'delivery_type': delivery_type,
+            'item_name': item.get('name', '') or item.get('package_name', ''),
+            'package_name': item.get('package_name', '') or item.get('name', ''),
+            'package_slug': item.get('package_slug', '') or item.get('slug', ''),
+            'category': item.get('category', ''),
+            'order_type': item.get('order_type', ''),
+            'event_date': item.get('event_date', ''),
+            'event_time': item.get('event_time', ''),
+            'duration': item.get('duration', ''),
+            'meal_type': item.get('meal_type', ''),
+            'default_menus': {},
+            'custom_menus': {},
+            'delivery_day': 1,
+            'total_days': 1,
+            'delivery_date': delivery_date,
+        })
 
     if logs:
         db['delivery_logs'].insert_many(logs)
@@ -201,12 +243,27 @@ def update_delivery_log(log_id):
         if status not in DELIVERY_STATUS:
             return jsonify({'error': 'Status pengiriman tidak valid'}), 400
         update_data['status'] = status
+        if status in ['delivered', 'received']:
+            update_data['delivered_at'] = datetime.now()
 
     if 'admin_note' in data:
         update_data['admin_note'] = data.get('admin_note', '')
 
     if 'receiver_name' in data:
         update_data['receiver_name'] = data.get('receiver_name', '')
+
+    if 'delivery_proof_url' in data:
+        update_data['delivery_proof_url'] = data.get('delivery_proof_url', '')
+
+    if 'delivery_proof_public_id' in data:
+        update_data['delivery_proof_public_id'] = data.get('delivery_proof_public_id', '')
+
+    if 'delivery_note' in data:
+        update_data['delivery_note'] = data.get('delivery_note', '')
+
+    if update_data.get('delivery_proof_url') and data.get('mark_delivered', True):
+        update_data['status'] = 'delivered'
+        update_data['delivered_at'] = datetime.now()
 
     db['delivery_logs'].update_one({'_id': ObjectId(log_id)}, {'$set': update_data})
     updated = db['delivery_logs'].find_one({'_id': ObjectId(log_id)})
