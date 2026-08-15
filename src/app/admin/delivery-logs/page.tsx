@@ -22,6 +22,20 @@ interface DeliveryLog {
   receiver_name?: string;
   admin_note?: string;
   received_at?: string;
+  default_menus?: Record<'lunch' | 'dinner', { title: string } | undefined>;
+  custom_menus?: Record<'lunch' | 'dinner', { title: string; original_menu_title?: string } | undefined>;
+}
+
+const MEAL_SLOT_LABELS: Record<'lunch' | 'dinner', string> = {
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+};
+
+function getMealSlots(mealType: string): ('lunch' | 'dinner')[] {
+  if (mealType === 'Lunch') return ['lunch'];
+  if (mealType === 'Dinner') return ['dinner'];
+  if (mealType === 'Lunch & Dinner') return ['lunch', 'dinner'];
+  return [];
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
@@ -134,6 +148,23 @@ export default function DeliveryLogsPage() {
                       <td className="p-4">
                         <p className="font-bold text-slate-800 text-sm">{log.package_name}</p>
                         <p className="text-xs text-slate-400">{log.duration} · {log.meal_type}</p>
+                        {getMealSlots(log.meal_type).length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {getMealSlots(log.meal_type).map(slot => {
+                              const customMenu = log.custom_menus?.[slot];
+                              const defaultMenu = log.default_menus?.[slot];
+                              const title = customMenu?.title || defaultMenu?.title;
+                              if (!title) return null;
+                              return (
+                                <div key={slot} className="text-[10px] font-semibold text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-2 py-1">
+                                  <span className="font-black text-slate-400">{MEAL_SLOT_LABELS[slot]}:</span> {title}
+                                  {customMenu && <span className="ml-1 text-[#114C2A] font-black">Custom</span>}
+                                  {customMenu?.original_menu_title && <p className="text-slate-400">Default: {customMenu.original_menu_title}</p>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </td>
                       <td className="p-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${cfg.color} ${cfg.bg}`}>

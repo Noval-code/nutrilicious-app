@@ -31,6 +31,67 @@ def parse_start_date(value):
         return datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
 
+def menu_summary(menu):
+    if not menu:
+        return None
+    return {
+        'menu_id': str(menu.get('_id', '')),
+        'title': menu.get('title', ''),
+        'category': menu.get('category', ''),
+        'items': menu.get('items', []),
+        'image_url': menu.get('image_url', ''),
+    }
+
+
+def get_default_menus_for_day(db, package_slug, delivery_day, meal_type):
+    schedule = db['menu_schedules'].find_one({'package_slug': package_slug}, sort=[('updated_at', -1)])
+    if not schedule or not schedule.get('schedule'):
+        return {}
+
+    schedule_day = schedule['schedule'][(delivery_day - 1) % len(schedule['schedule'])]
+    default_menus = {}
+
+    if meal_type in ['Lunch', 'Lunch & Dinner'] and schedule_day.get('lunch_menu_id'):
+        try:
+            menu = db['menus'].find_one({'_id': ObjectId(schedule_day['lunch_menu_id'])})
+            if menu:
+                default_menus['lunch'] = menu_summary(menu)
+        except Exception:
+            pass
+
+    if meal_type in ['Dinner', 'Lunch & Dinner'] and schedule_day.get('dinner_menu_id'):
+        try:
+            menu = db['menus'].find_one({'_id': ObjectId(schedule_day['dinner_menu_id'])})
+            if menu:
+                default_menus['dinner'] = menu_summary(menu)
+        except Exception:
+            pass
+
+    return default_menus
+
+
+def get_log_meal_type(db, log):
+    if log.get('meal_type'):
+        return log.get('meal_type')
+
+    txn_id = log.get('transaction_id')
+    if not txn_id:
+        return ''
+
+    transaction = db['transactions'].find_one({'_id': txn_id})
+    if not transaction:
+        return ''
+
+    for item in transaction.get('items', []):
+        if item.get('type', 'package') != 'package':
+            continue
+        same_slug = item.get('package_slug') and item.get('package_slug') == log.get('package_slug')
+        same_name = item.get('package_name') and item.get('package_name') == log.get('package_name')
+        if same_slug or same_name:
+            return item.get('meal_type', '')
+    return ''
+
+
 def serialize_log(log):
     log['_id'] = str(log['_id'])
     if isinstance(log.get('transaction_id'), ObjectId):
@@ -62,6 +123,7 @@ def generate_delivery_logs_for_transaction(db, transaction):
         total_days = parse_duration_days(item.get('duration', ''))
         for day in range(1, total_days + 1):
             delivery_date = start_date + timedelta(days=day - 1)
+            default_menus = get_default_menus_for_day(db, item.get('package_slug', ''), day, item.get('meal_type', ''))
             logs.append({
                 'transaction_id': txn_id,
                 'order_id': transaction.get('order_id', ''),
@@ -73,6 +135,8 @@ def generate_delivery_logs_for_transaction(db, transaction):
                 'package_slug': item.get('package_slug', ''),
                 'duration': item.get('duration', ''),
                 'meal_type': item.get('meal_type', ''),
+                'default_menus': default_menus,
+                'custom_menus': {},
                 'delivery_day': day,
                 'total_days': total_days,
                 'delivery_date': delivery_date,
@@ -148,6 +212,64 @@ def update_delivery_log(log_id):
     updated = db['delivery_logs'].find_one({'_id': ObjectId(log_id)})
     if not updated:
         return jsonify({'error': 'Log pengiriman tidak ditemukan'}), 404
+    return jsonify(serialize_log(updated))
+
+
+@delivery_logs_bp.route('/<log_id>/request-menu-change', methods=['PUT'])
+@jwt_required()
+def request_menu_change(log_id):
+    db = get_db()
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    meal_slot = data.get('meal_slot', '')
+    menu_id = data.get('menu_id', '')
+
+    if meal_slot not in ['lunch', 'dinner']:
+        return jsonify({'error': 'Pilihan waktu makan tidak valid'}), 400
+
+    log = db['delivery_logs'].find_one({'_id': ObjectId(log_id), 'user_id': user_id})
+    if not log:
+        return jsonify({'error': 'Log pengiriman tidak ditemukan'}), 404
+
+    if log.get('status') != 'pending':
+        return jsonify({'error': 'Menu hanya bisa diganti sebelum pesanan diproses'}), 400
+
+    meal_type = get_log_meal_type(db, log)
+    allowed_slots = []
+    if meal_type in ['Lunch', 'Lunch & Dinner']:
+        allowed_slots.append('lunch')
+    if meal_type in ['Dinner', 'Lunch & Dinner']:
+        allowed_slots.append('dinner')
+    if meal_slot not in allowed_slots:
+        return jsonify({'error': 'Menu pengganti tidak sesuai tipe makan paket'}), 400
+
+    try:
+        menu = db['menus'].find_one({'_id': ObjectId(menu_id)})
+    except Exception:
+        menu = None
+    if not menu:
+        return jsonify({'error': 'Menu pengganti tidak ditemukan'}), 404
+
+    expected_category = 'lunch' if meal_slot == 'lunch' else 'dinner'
+    if menu.get('category') != expected_category:
+        return jsonify({'error': 'Menu pengganti harus sesuai kategori waktu makan'}), 400
+
+    default_menu = (log.get('default_menus') or {}).get(meal_slot)
+    custom_menu = {
+        **menu_summary(menu),
+        'original_menu_id': (default_menu or {}).get('menu_id', ''),
+        'original_menu_title': (default_menu or {}).get('title', ''),
+        'requested_at': datetime.now().isoformat(),
+    }
+
+    db['delivery_logs'].update_one(
+        {'_id': ObjectId(log_id)},
+        {'$set': {
+            f'custom_menus.{meal_slot}': custom_menu,
+            'updated_at': datetime.now(),
+        }}
+    )
+    updated = db['delivery_logs'].find_one({'_id': ObjectId(log_id)})
     return jsonify(serialize_log(updated))
 
 

@@ -13,7 +13,6 @@ import {
   Truck,
   XCircle,
   Loader2,
-  Receipt,
   ChevronDown,
   ChevronUp,
   ShoppingBag,
@@ -36,6 +35,19 @@ interface OrderItem {
   price: number;
   quantity: number;
   subtotal: number;
+}
+
+interface MenuSummary {
+  menu_id: string;
+  title: string;
+  category: string;
+  items?: string[];
+}
+
+interface MenuOption {
+  _id: string;
+  title: string;
+  category: string;
 }
 
 interface Order {
@@ -72,6 +84,8 @@ interface DeliveryLog {
   status: string;
   recipient_status: string;
   receiver_name?: string;
+  default_menus?: Record<'lunch' | 'dinner', MenuSummary | undefined>;
+  custom_menus?: Record<'lunch' | 'dinner', (MenuSummary & { original_menu_title?: string }) | undefined>;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ElementType; description: string }> = {
@@ -153,11 +167,33 @@ const DELIVERY_LABELS: Record<string, string> = {
   failed: "Gagal",
 };
 
+const MEAL_SLOT_LABELS: Record<'lunch' | 'dinner', string> = {
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+};
+
+function getMealSlots(mealType: string): ('lunch' | 'dinner')[] {
+  if (mealType === 'Lunch') return ['lunch'];
+  if (mealType === 'Dinner') return ['dinner'];
+  if (mealType === 'Lunch & Dinner') return ['lunch', 'dinner'];
+  return [];
+}
+
+function getPackageMealType(order: Order, log: DeliveryLog) {
+  if (log.meal_type) return log.meal_type;
+  const packageItem = order.items.find(item => item.type !== 'menu' && item.package_name === log.package_name);
+  return packageItem?.meal_type || '';
+}
+
 function OrderCard({ order }: { order: Order }) {
   const [expanded, setExpanded] = useState(false);
   const [deliveryLogs, setDeliveryLogs] = useState<DeliveryLog[]>([]);
+  const [menus, setMenus] = useState<MenuOption[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [changingMenuKey, setChangingMenuKey] = useState<string | null>(null);
+  const [menuChangeTarget, setMenuChangeTarget] = useState<{ log: DeliveryLog; slot: 'lunch' | 'dinner' } | null>(null);
+  const [selectedMenuId, setSelectedMenuId] = useState('');
   const [creatingRemainingInvoice, setCreatingRemainingInvoice] = useState(false);
   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG["pending_payment"];
   const StatusIcon = cfg.icon;
@@ -182,6 +218,15 @@ function OrderCard({ order }: { order: Order }) {
     fetchDeliveryLogs();
   }, [expanded, deliveryLogs.length, order.order_id]);
 
+  useEffect(() => {
+    if (!expanded || menus.length > 0) return;
+    async function fetchMenus() {
+      const res = await fetch(`${API_URL}/menus/?available=true`);
+      if (res.ok) setMenus(await res.json());
+    }
+    fetchMenus();
+  }, [expanded, menus.length]);
+
   const confirmReceived = async (log: DeliveryLog) => {
     setConfirmingId(log._id);
     try {
@@ -196,6 +241,36 @@ function OrderCard({ order }: { order: Order }) {
     } finally {
       setConfirmingId(null);
     }
+  };
+
+  const requestMenuChange = async (log: DeliveryLog, mealSlot: 'lunch' | 'dinner', menuId: string) => {
+    if (!menuId) return;
+    const key = `${log._id}-${mealSlot}`;
+    setChangingMenuKey(key);
+    try {
+      const res = await authFetch(`${API_URL}/delivery-logs/${log._id}/request-menu-change`, {
+        method: 'PUT',
+        body: JSON.stringify({ meal_slot: mealSlot, menu_id: menuId }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setDeliveryLogs(prev => prev.map(item => item._id === log._id ? updated : item));
+        setMenuChangeTarget(null);
+        setSelectedMenuId('');
+      }
+    } finally {
+      setChangingMenuKey(null);
+    }
+  };
+
+  const openMenuChange = (log: DeliveryLog, slot: 'lunch' | 'dinner') => {
+    setMenuChangeTarget({ log, slot });
+    setSelectedMenuId(log.custom_menus?.[slot]?.menu_id || '');
+  };
+
+  const closeMenuChange = () => {
+    setMenuChangeTarget(null);
+    setSelectedMenuId('');
   };
 
   const handlePayRemaining = async () => {
@@ -360,11 +435,14 @@ function OrderCard({ order }: { order: Order }) {
                 <div className="text-xs text-slate-400 font-semibold flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" />Memuat log pengiriman...</div>
               ) : (
                 <div className="space-y-2">
-                  {deliveryLogs.map(log => (
-                    <div key={log._id} className="bg-slate-50 rounded-xl p-3 flex items-center justify-between gap-3">
+                  {deliveryLogs.map(log => {
+                    const mealType = getPackageMealType(order, log);
+                    return (
+                    <div key={log._id} className="bg-slate-50 rounded-xl p-3 flex flex-col gap-3">
+                      <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="font-bold text-sm text-slate-700">Hari {log.delivery_day}/{log.total_days} · {formatShortDate(log.delivery_date)}</p>
-                        <p className="text-xs text-slate-400">{log.package_name} · {DELIVERY_LABELS[log.status] || log.status}</p>
+                        <p className="text-xs text-slate-400">{log.package_name}{mealType ? ` · ${mealType}` : ''} · {DELIVERY_LABELS[log.status] || log.status}</p>
                       </div>
                       {log.status === 'delivered' && log.recipient_status !== 'confirmed' ? (
                         <button
@@ -379,10 +457,92 @@ function OrderCard({ order }: { order: Order }) {
                           {log.status === 'received' ? 'Sudah diterima' : DELIVERY_LABELS[log.status] || log.status}
                         </span>
                       )}
+                      </div>
+                      {getMealSlots(mealType).length > 0 && (
+                        <div className="space-y-2 border-t border-white pt-2">
+                          {getMealSlots(mealType).map(slot => {
+                            const defaultMenu = log.default_menus?.[slot];
+                            const customMenu = log.custom_menus?.[slot];
+                            const currentTitle = customMenu?.title || defaultMenu?.title || 'Menu belum tersedia';
+                            return (
+                              <div key={slot} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide">{MEAL_SLOT_LABELS[slot]}</p>
+                                  <p className="text-xs font-bold text-slate-700 truncate">
+                                    {currentTitle}
+                                    {customMenu && <span className="ml-1 text-[#114C2A]">(Custom)</span>}
+                                  </p>
+                                  {customMenu?.original_menu_title && <p className="text-[10px] text-slate-400">Default: {customMenu.original_menu_title}</p>}
+                                </div>
+                                {log.status === 'pending' && (
+                                  <button
+                                    onClick={() => openMenuChange(log, slot)}
+                                    className="bg-white border border-[#114C2A]/20 text-[#114C2A] rounded-lg px-3 py-1.5 text-xs font-bold hover:bg-[#f2f6f4] transition-colors"
+                                  >
+                                    Ganti Menu
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
+            </div>
+          )}
+
+          {menuChangeTarget && (
+            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4" onClick={closeMenuChange}>
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-800">Ganti Menu {MEAL_SLOT_LABELS[menuChangeTarget.slot]}</h3>
+                  <p className="text-xs text-slate-400 mt-1">Hari {menuChangeTarget.log.delivery_day}/{menuChangeTarget.log.total_days} · {formatShortDate(menuChangeTarget.log.delivery_date)}</p>
+                </div>
+
+                <div className="bg-slate-50 rounded-xl p-3 text-sm">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Menu Saat Ini</p>
+                  <p className="font-bold text-slate-700 mt-1">
+                    {menuChangeTarget.log.custom_menus?.[menuChangeTarget.slot]?.title || menuChangeTarget.log.default_menus?.[menuChangeTarget.slot]?.title || 'Menu belum tersedia'}
+                  </p>
+                  {menuChangeTarget.log.custom_menus?.[menuChangeTarget.slot]?.original_menu_title && (
+                    <p className="text-xs text-slate-400 mt-1">Default: {menuChangeTarget.log.custom_menus[menuChangeTarget.slot]?.original_menu_title}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Pilih Menu Pengganti</label>
+                  <select
+                    value={selectedMenuId}
+                    onChange={(e) => setSelectedMenuId(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#F9A826]"
+                  >
+                    <option value="">Pilih menu</option>
+                    {menus.filter(menu => menu.category === menuChangeTarget.slot).map(menu => (
+                      <option key={menu._id} value={menu._id}>{menu.title}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={closeMenuChange}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-500 font-bold text-sm hover:bg-slate-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={() => requestMenuChange(menuChangeTarget.log, menuChangeTarget.slot, selectedMenuId)}
+                    disabled={!selectedMenuId || changingMenuKey === `${menuChangeTarget.log._id}-${menuChangeTarget.slot}`}
+                    className="flex-1 py-2.5 rounded-xl bg-[#114C2A] text-white font-bold text-sm disabled:opacity-50"
+                  >
+                    {changingMenuKey === `${menuChangeTarget.log._id}-${menuChangeTarget.slot}` ? 'Menyimpan...' : 'Simpan Perubahan'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
