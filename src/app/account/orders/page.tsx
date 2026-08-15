@@ -155,7 +155,7 @@ function formatDate(iso: string) {
 }
 
 function formatShortDate(iso: string) {
-  return new Date(iso).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" });
+  return new Date(iso).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" });
 }
 
 const DELIVERY_LABELS: Record<string, string> = {
@@ -442,7 +442,6 @@ function OrderCard({ order }: { order: Order }) {
                       <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="font-bold text-sm text-slate-700">Hari {log.delivery_day}/{log.total_days} · {formatShortDate(log.delivery_date)}</p>
-                        <p className="text-xs text-slate-400">{log.package_name}{mealType ? ` · ${mealType}` : ''} · {DELIVERY_LABELS[log.status] || log.status}</p>
                       </div>
                       {log.status === 'delivered' && log.recipient_status !== 'confirmed' ? (
                         <button
@@ -467,7 +466,6 @@ function OrderCard({ order }: { order: Order }) {
                             return (
                               <div key={slot} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <div className="min-w-0">
-                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wide">{MEAL_SLOT_LABELS[slot]}</p>
                                   <p className="text-xs font-bold text-slate-700 truncate">
                                     {currentTitle}
                                     {customMenu && <span className="ml-1 text-[#114C2A]">(Custom)</span>}
