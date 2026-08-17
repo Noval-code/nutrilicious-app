@@ -163,17 +163,18 @@ function MenuCard({
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <p className="text-[11px] font-black text-amber-700 uppercase tracking-wide">Promo Acara</p>
                   </div>
-                  <div className="space-y-1">
+                  <div className="flex flex-wrap gap-1.5">
                     {eventTiers.map(tier => {
                       const isActive = quantity >= Number(tier.min_qty || 0);
                       return (
-                        <p
+                        <span
                           key={`${tier.min_qty}-${tier.discount_percent}`}
-                          className={`text-[11px] font-bold ${isActive ? 'text-[#114C2A]' : 'text-amber-700'}`}
+                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-sm font-black ${
+                            isActive ? 'bg-[#114C2A] text-white' : 'bg-white text-amber-700 border border-amber-100'
+                          }`}
                         >
-                          Diskon {Number(tier.discount_percent || 0)}% untuk pemesanan minimal {Number(tier.min_qty || 0)} porsi
-                          {isActive && <span className="ml-1 rounded-full bg-[#114C2A] px-1.5 py-0.5 text-[9px] font-black text-white">Aktif</span>}
-                        </p>
+                          {Number(tier.min_qty || 0)}+ porsi: {Number(tier.discount_percent || 0)}%
+                        </span>
                       );
                     })}
                   </div>
