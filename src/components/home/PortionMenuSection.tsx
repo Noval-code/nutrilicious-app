@@ -126,40 +126,36 @@ function MenuCard({
         </div>
       )}
       <div className="p-6 flex flex-col flex-1">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-[#114C2A]">{categoryLabel}</p>
-            <h3 className="text-xl font-extrabold text-slate-800 mt-1">{menu.title}</h3>
-          </div>
-          <div className={`text-right shrink-0 rounded-2xl px-3 py-2 border ${
-            hasDiscount
-              ? 'bg-[#fff7e6] border-[#F9A826]/40 shadow-sm'
-              : 'bg-[#f2f6f4] border-[#dce8df]'
-          }`}>
-            {hasDiscount && (
-              <div className="mb-1 flex justify-end">
-                <span className="rounded-full bg-[#F9A826] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-[#114C2A]">
-                  {discountLabel} {pricing.discountPercent ? `${pricing.discountPercent}%` : ''}
-                </span>
-              </div>
-            )}
-            {hasDiscount && (
-              <p className="text-xs font-bold text-slate-400 line-through">Rp{formatRupiah(pricing.originalPrice)}</p>
-            )}
-            <p className="text-2xl font-black leading-tight tracking-tight text-[#114C2A]">Rp{formatRupiah(pricing.finalPrice)}</p>
-            <p className="text-[11px] font-bold text-slate-500">per porsi</p>
-            {hasDiscount && (
-              <p className="mt-0.5 text-[11px] font-black text-amber-600">
-                Hemat Rp{formatRupiah(Math.max(0, pricing.originalPrice - pricing.finalPrice))}
-              </p>
-            )}
-          </div>
+        <div className="mb-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#114C2A]">{categoryLabel}</p>
+          <h3 className="text-xl font-extrabold text-slate-800 mt-1">{menu.title}</h3>
         </div>
 
         <div className="flex flex-wrap gap-1.5 mb-4 text-[11px] font-bold">
           {menu.calories ? <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-lg">{menu.calories} kcal</span> : null}
           {menu.protein ? <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg">Protein {menu.protein}g</span> : null}
           {menu.carbs ? <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg">Karbo {menu.carbs}g</span> : null}
+        </div>
+
+        <div className={`mb-4 rounded-2xl px-4 py-3 border ${
+          hasDiscount
+            ? 'bg-[#fff7e6] border-[#F9A826]/40 shadow-sm'
+            : 'bg-[#f2f6f4] border-[#dce8df]'
+        }`}>
+          {hasDiscount && (
+            <div className="mb-1.5 flex">
+              <span className="rounded-full bg-[#F9A826] px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#114C2A]">
+                {discountLabel} {pricing.discountPercent ? `${pricing.discountPercent}%` : ''}
+              </span>
+            </div>
+          )}
+          {hasDiscount && (
+            <p className="text-sm font-bold text-red-500 line-through">Rp{formatRupiah(pricing.originalPrice)}</p>
+          )}
+          <div className="flex items-end justify-between gap-3">
+            <p className="text-3xl font-black leading-tight tracking-tight text-[#114C2A]">Rp{formatRupiah(pricing.finalPrice)}</p>
+            <p className="pb-1 text-xs font-bold text-slate-500">per porsi</p>
+          </div>
         </div>
 
         <div className="space-y-3 mt-auto">
