@@ -49,9 +49,19 @@ function isPromoActive(menu: PortionMenu) {
 }
 
 function getEventDiscount(menu: PortionMenu, quantity: number) {
-  return [...(menu.event_discount_tiers || [])]
+  return getSortedEventTiers(menu)
     .filter(tier => quantity >= Number(tier.min_qty || 0))
     .sort((a, b) => Number(b.min_qty || 0) - Number(a.min_qty || 0))[0]?.discount_percent || 0;
+}
+
+function getSortedEventTiers(menu: PortionMenu) {
+  return [...(menu.event_discount_tiers || [])]
+    .filter(tier => Number(tier.min_qty || 0) > 0 && Number(tier.discount_percent || 0) > 0)
+    .sort((a, b) => Number(a.min_qty || 0) - Number(b.min_qty || 0));
+}
+
+function getNextEventTier(menu: PortionMenu, quantity: number) {
+  return getSortedEventTiers(menu).find(tier => quantity < Number(tier.min_qty || 0));
 }
 
 function getMenuPricing(menu: PortionMenu, orderType: 'regular' | 'event', quantity: number) {
@@ -104,6 +114,9 @@ function MenuCard({
   onIncrease,
   onAdd,
 }: MenuCardProps) {
+  const eventTiers = getSortedEventTiers(menu);
+  const nextEventTier = orderType === 'event' ? getNextEventTier(menu, quantity) : undefined;
+
   return (
     <div className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col">
       {menu.image_url && (
@@ -148,9 +161,38 @@ function MenuCard({
                 <input type="time" value={eventTime} onChange={(e) => onEventTimeChange?.(e.target.value)} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold" />
               </div>
               {menu.event_discount_tiers && menu.event_discount_tiers.length > 0 && (
-                <p className="text-[11px] font-bold text-amber-600 bg-amber-50 rounded-lg px-2 py-1">
-                  Diskon acara mengikuti jumlah porsi. Saat ini {pricing.discountPercent > 0 ? `${pricing.discountPercent}%` : 'belum memenuhi minimal porsi'}.
-                </p>
+                <div className="rounded-2xl border border-amber-100 bg-amber-50/80 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-black text-amber-700 uppercase tracking-wide">Promo Acara Bertingkat</p>
+                    {pricing.discountPercent > 0 && (
+                      <span className="rounded-full bg-[#F9A826] px-2 py-0.5 text-[10px] font-black text-[#114C2A]">
+                        Aktif {pricing.discountPercent}%
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {eventTiers.map(tier => {
+                      const isActive = quantity >= Number(tier.min_qty || 0);
+                      return (
+                        <span
+                          key={`${tier.min_qty}-${tier.discount_percent}`}
+                          className={`rounded-full px-2 py-1 text-[10px] font-black ${
+                            isActive ? 'bg-[#114C2A] text-white' : 'bg-white text-amber-700 border border-amber-100'
+                          }`}
+                        >
+                          {Number(tier.min_qty || 0)}+ porsi: {Number(tier.discount_percent || 0)}%
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[11px] font-bold text-amber-700">
+                    {pricing.discountPercent > 0
+                      ? `Diskon ${pricing.discountPercent}% aktif untuk ${quantity} porsi.`
+                      : nextEventTier
+                        ? `Tambah ${Number(nextEventTier.min_qty || 0) - quantity} porsi lagi untuk diskon ${Number(nextEventTier.discount_percent || 0)}%.`
+                        : 'Diskon acara mengikuti jumlah porsi.'}
+                  </p>
+                </div>
               )}
             </div>
           )}
