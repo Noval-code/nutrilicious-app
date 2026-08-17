@@ -117,7 +117,6 @@ function MenuCard({
   const eventTiers = getSortedEventTiers(menu);
   const nextEventTier = orderType === 'event' ? getNextEventTier(menu, quantity) : undefined;
   const discountLabel = orderType === 'event' ? 'Diskon Acara' : 'Promo';
-  const menuDescription = (menu.items || []).join(', ');
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col">
@@ -135,17 +134,14 @@ function MenuCard({
         <div className="mb-3">
           <p className="text-xs font-bold uppercase tracking-wider text-[#114C2A] mb-2">{categoryLabel}</p>
           <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">{menu.title}</h3>
-          {menuDescription && (
-            <p className="mt-2 text-sm leading-relaxed text-slate-600 line-clamp-2">
-              {menuDescription}
-            </p>
-          )}
         </div>
 
         <div className="flex flex-wrap gap-1.5 mb-4 text-[11px] font-bold">
           {menu.calories ? <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-lg">{menu.calories} kcal</span> : null}
           {menu.protein ? <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg">Protein {menu.protein}g</span> : null}
           {menu.carbs ? <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg">Karbo {menu.carbs}g</span> : null}
+          {menu.fat ? <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded-lg">Lemak {menu.fat}g</span> : null}
+          {menu.sugar ? <span className="bg-pink-50 text-pink-700 px-2 py-0.5 rounded-lg">Gula {menu.sugar}g</span> : null}
         </div>
 
         <div className="mb-4">
