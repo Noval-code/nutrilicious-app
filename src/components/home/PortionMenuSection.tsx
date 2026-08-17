@@ -116,6 +116,7 @@ function MenuCard({
 }: MenuCardProps) {
   const eventTiers = getSortedEventTiers(menu);
   const nextEventTier = orderType === 'event' ? getNextEventTier(menu, quantity) : undefined;
+  const discountLabel = orderType === 'event' ? 'Diskon Acara' : 'Promo';
 
   return (
     <div className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col">
@@ -130,15 +131,26 @@ function MenuCard({
             <p className="text-xs font-bold uppercase tracking-wider text-[#114C2A]">{categoryLabel}</p>
             <h3 className="text-xl font-extrabold text-slate-800 mt-1">{menu.title}</h3>
           </div>
-          <div className="text-right shrink-0">
-            <p className="text-xs font-semibold text-slate-400">per porsi</p>
+          <div className={`text-right shrink-0 rounded-2xl px-3 py-2 border ${
+            hasDiscount
+              ? 'bg-[#fff7e6] border-[#F9A826]/40 shadow-sm'
+              : 'bg-[#f2f6f4] border-[#dce8df]'
+          }`}>
             {hasDiscount && (
-              <p className="text-xs font-semibold text-slate-400 line-through">Rp{formatRupiah(pricing.originalPrice)}</p>
+              <div className="mb-1 flex justify-end">
+                <span className="rounded-full bg-[#F9A826] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-[#114C2A]">
+                  {discountLabel} {pricing.discountPercent ? `${pricing.discountPercent}%` : ''}
+                </span>
+              </div>
             )}
-            <p className="font-black text-[#114C2A]">Rp{formatRupiah(pricing.finalPrice)}</p>
             {hasDiscount && (
-              <p className="text-[10px] font-black text-[#F9A826]">
-                {orderType === 'event' ? `Diskon acara ${pricing.discountPercent}%` : 'Promo'}
+              <p className="text-xs font-bold text-slate-400 line-through">Rp{formatRupiah(pricing.originalPrice)}</p>
+            )}
+            <p className="text-2xl font-black leading-tight tracking-tight text-[#114C2A]">Rp{formatRupiah(pricing.finalPrice)}</p>
+            <p className="text-[11px] font-bold text-slate-500">per porsi</p>
+            {hasDiscount && (
+              <p className="mt-0.5 text-[11px] font-black text-amber-600">
+                Hemat Rp{formatRupiah(Math.max(0, pricing.originalPrice - pricing.finalPrice))}
               </p>
             )}
           </div>
