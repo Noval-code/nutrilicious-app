@@ -123,6 +123,11 @@ function MenuCard({
       {menu.image_url && (
         <div className="relative aspect-[4/3] bg-slate-100">
           <Image src={menu.image_url} alt={menu.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
+          {hasDiscount && (
+            <div className="absolute right-3 top-3 rounded-full bg-[#F9A826] px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-[#114C2A] shadow-lg">
+              {discountLabel} {pricing.discountPercent ? `${pricing.discountPercent}%` : ''}
+            </div>
+          )}
         </div>
       )}
       <div className="p-6 flex flex-col flex-1">
@@ -137,24 +142,12 @@ function MenuCard({
           {menu.carbs ? <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg">Karbo {menu.carbs}g</span> : null}
         </div>
 
-        <div className={`mb-4 rounded-2xl px-4 py-3 border ${
-          hasDiscount
-            ? 'bg-[#fff7e6] border-[#F9A826]/40 shadow-sm'
-            : 'bg-[#f2f6f4] border-[#dce8df]'
-        }`}>
-          {hasDiscount && (
-            <div className="mb-1.5 flex">
-              <span className="rounded-full bg-[#F9A826] px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#114C2A]">
-                {discountLabel} {pricing.discountPercent ? `${pricing.discountPercent}%` : ''}
-              </span>
-            </div>
-          )}
-          {hasDiscount && (
-            <p className="text-sm font-bold text-red-500 line-through">Rp{formatRupiah(pricing.originalPrice)}</p>
-          )}
-          <div className="flex items-end justify-between gap-3">
+        <div className="mb-4 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+          <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
             <p className="text-3xl font-black leading-tight tracking-tight text-[#114C2A]">Rp{formatRupiah(pricing.finalPrice)}</p>
-            <p className="pb-1 text-xs font-bold text-slate-500">per porsi</p>
+            {hasDiscount && (
+              <p className="pb-1 text-sm font-bold text-red-500 line-through">Rp{formatRupiah(pricing.originalPrice)}</p>
+            )}
           </div>
         </div>
 
