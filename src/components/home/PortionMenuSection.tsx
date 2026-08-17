@@ -117,23 +117,29 @@ function MenuCard({
   const eventTiers = getSortedEventTiers(menu);
   const nextEventTier = orderType === 'event' ? getNextEventTier(menu, quantity) : undefined;
   const discountLabel = orderType === 'event' ? 'Diskon Acara' : 'Promo';
+  const menuDescription = (menu.items || []).join(', ');
 
   return (
-    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col">
       {menu.image_url && (
-        <div className="relative aspect-[4/3] bg-slate-100">
+        <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
           <Image src={menu.image_url} alt={menu.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
           {hasDiscount && (
-            <div className="absolute right-3 top-3 rounded-full bg-[#F9A826] px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-[#114C2A] shadow-lg">
-              {discountLabel} {pricing.discountPercent ? `${pricing.discountPercent}%` : ''}
+            <div className="absolute right-3 top-3 rounded-full bg-[#C76A00] px-4 py-2 text-xs font-black text-white shadow-lg">
+              {discountLabel === 'Promo' ? 'Promo' : 'Diskon'} {pricing.discountPercent ? `${pricing.discountPercent}%` : ''}
             </div>
           )}
         </div>
       )}
-      <div className="p-6 flex flex-col flex-1">
+      <div className="p-6 flex flex-col flex-1 bg-white">
         <div className="mb-3">
-          <p className="text-xs font-bold uppercase tracking-wider text-[#114C2A]">{categoryLabel}</p>
-          <h3 className="text-xl font-extrabold text-slate-800 mt-1">{menu.title}</h3>
+          <p className="text-xs font-bold uppercase tracking-wider text-[#114C2A] mb-2">{categoryLabel}</p>
+          <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">{menu.title}</h3>
+          {menuDescription && (
+            <p className="mt-2 text-sm leading-relaxed text-slate-600 line-clamp-2">
+              {menuDescription}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-1.5 mb-4 text-[11px] font-bold">
@@ -142,11 +148,11 @@ function MenuCard({
           {menu.carbs ? <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg">Karbo {menu.carbs}g</span> : null}
         </div>
 
-        <div className="mb-4 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
-          <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
-            <p className="text-3xl font-black leading-tight tracking-tight text-[#114C2A]">Rp{formatRupiah(pricing.finalPrice)}</p>
+        <div className="mb-4">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <p className="text-2xl font-black leading-tight tracking-tight text-[#006B3F]">Rp {formatRupiah(pricing.finalPrice)}</p>
             {hasDiscount && (
-              <p className="pb-1 text-sm font-bold text-red-500 line-through">Rp{formatRupiah(pricing.originalPrice)}</p>
+              <p className="text-sm font-semibold text-slate-500 line-through decoration-red-500 decoration-2">Rp {formatRupiah(pricing.originalPrice)}</p>
             )}
           </div>
         </div>
