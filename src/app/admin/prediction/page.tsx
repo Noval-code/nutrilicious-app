@@ -82,6 +82,11 @@ interface TotalMaterial {
   name: string;
   total_quantity: number;
   unit: string;
+  current_stock?: number;
+  min_stock?: number;
+  stock_gap?: number;
+  recommended_restock?: number;
+  stock_status?: 'safe' | 'low' | 'restock' | 'unknown';
 }
 
 interface PackageMaterialForecast {
@@ -132,6 +137,33 @@ const PACKAGE_ICONS: Record<string, React.ElementType> = {
   'muscle-gain': Dumbbell,
 };
 
+const STOCK_STATUS_CONFIG: Record<string, { label: string; className: string; recommendation: string }> = {
+  safe: {
+    label: 'Aman',
+    className: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    recommendation: 'Stok aman',
+  },
+  low: {
+    label: 'Menipis',
+    className: 'bg-amber-50 text-amber-700 border-amber-100',
+    recommendation: 'Pantau stok',
+  },
+  restock: {
+    label: 'Perlu Restock',
+    className: 'bg-red-50 text-red-700 border-red-100',
+    recommendation: 'Tambah stok',
+  },
+  unknown: {
+    label: 'Belum Ada Stok',
+    className: 'bg-slate-50 text-slate-500 border-slate-100',
+    recommendation: 'Daftarkan stok',
+  },
+};
+
+function formatQuantity(value: number | undefined) {
+  return Number(value || 0).toLocaleString('id-ID', { maximumFractionDigits: 1 });
+}
+
 
 
 
@@ -180,6 +212,10 @@ function MaterialForecastSection({ materialForecast }: { materialForecast: Mater
           const colors = PACKAGE_COLORS[pkg.package_slug] || PACKAGE_COLORS['healthy-food'];
           const Icon = PACKAGE_ICONS[pkg.package_slug] || Package;
           const isExpanded = expandedPkg === pkg.package_slug;
+          const restockCount = pkg.total_materials.filter(mat => mat.stock_status === 'restock').length;
+          const lowCount = pkg.total_materials.filter(mat => mat.stock_status === 'low').length;
+          const safeCount = pkg.total_materials.filter(mat => mat.stock_status === 'safe').length;
+          const unknownCount = pkg.total_materials.filter(mat => mat.stock_status === 'unknown').length;
 
           return (
             <div
@@ -229,11 +265,30 @@ function MaterialForecastSection({ materialForecast }: { materialForecast: Mater
                     </div>
                   ) : (
                     <div className="p-5 space-y-5">
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div className="rounded-2xl border border-red-100 bg-red-50 p-4">
+                          <p className="text-xs font-black uppercase tracking-wide text-red-500">Perlu Restock</p>
+                          <p className="mt-1 text-2xl font-black text-red-700">{restockCount}</p>
+                        </div>
+                        <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                          <p className="text-xs font-black uppercase tracking-wide text-amber-500">Stok Menipis</p>
+                          <p className="mt-1 text-2xl font-black text-amber-700">{lowCount}</p>
+                        </div>
+                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                          <p className="text-xs font-black uppercase tracking-wide text-emerald-500">Aman</p>
+                          <p className="mt-1 text-2xl font-black text-emerald-700">{safeCount}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                          <p className="text-xs font-black uppercase tracking-wide text-slate-400">Belum Ada Stok</p>
+                          <p className="mt-1 text-2xl font-black text-slate-600">{unknownCount}</p>
+                        </div>
+                      </div>
+
                       {/* Total Materials Table */}
                       <div>
                         <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
                           <Boxes className="w-4 h-4 text-amber-500" />
-                          Total Kebutuhan Bahan Baku (1 Minggu)
+                          Analisis Kebutuhan dan Stok Bahan Baku
                         </h4>
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
@@ -242,20 +297,44 @@ function MaterialForecastSection({ materialForecast }: { materialForecast: Mater
                                 <th className="text-left py-2.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wide rounded-l-lg">No</th>
                                 <th className="text-left py-2.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wide">Bahan Baku</th>
                                 <th className="text-right py-2.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wide">Kebutuhan</th>
-                                <th className="text-left py-2.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wide rounded-r-lg">Satuan</th>
+                                <th className="text-right py-2.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wide">Stok Saat Ini</th>
+                                <th className="text-right py-2.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wide">Selisih</th>
+                                <th className="text-left py-2.5 px-4 font-bold text-slate-500 text-xs uppercase tracking-wide rounded-r-lg">Rekomendasi</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {pkg.total_materials.map((mat, idx) => (
-                                <tr key={`${mat.name}-${idx}`} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                                  <td className="py-2.5 px-4 text-slate-400 font-semibold">{idx + 1}</td>
-                                  <td className="py-2.5 px-4 font-semibold text-slate-700 capitalize">{mat.name}</td>
-                                  <td className="py-2.5 px-4 text-right font-black text-slate-800 tabular-nums">
-                                    {mat.total_quantity.toLocaleString('id-ID', { maximumFractionDigits: 1 })}
-                                  </td>
-                                  <td className="py-2.5 px-4 text-slate-500">{mat.unit}</td>
-                                </tr>
-                              ))}
+                              {pkg.total_materials.map((mat, idx) => {
+                                const status = STOCK_STATUS_CONFIG[mat.stock_status || 'unknown'];
+                                const stockGap = Number(mat.stock_gap || 0);
+                                return (
+                                  <tr key={`${mat.name}-${idx}`} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                    <td className="py-3 px-4 text-slate-400 font-semibold">{idx + 1}</td>
+                                    <td className="py-3 px-4">
+                                      <p className="font-bold text-slate-700 capitalize">{mat.name}</p>
+                                      <p className="text-xs text-slate-400">Satuan: {mat.unit}</p>
+                                    </td>
+                                    <td className="py-3 px-4 text-right font-black text-slate-800 tabular-nums">
+                                      {formatQuantity(mat.total_quantity)} {mat.unit}
+                                    </td>
+                                    <td className="py-3 px-4 text-right font-bold text-slate-700 tabular-nums">
+                                      {mat.stock_status === 'unknown' ? '-' : `${formatQuantity(mat.current_stock)} ${mat.unit}`}
+                                    </td>
+                                    <td className={`py-3 px-4 text-right font-black tabular-nums ${stockGap < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                      {mat.stock_status === 'unknown' ? '-' : `${stockGap > 0 ? '+' : ''}${formatQuantity(stockGap)} ${mat.unit}`}
+                                    </td>
+                                    <td className="py-3 px-4">
+                                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-black ${status.className}`}>
+                                        {status.label}
+                                      </span>
+                                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                                        {(mat.recommended_restock || 0) > 0
+                                          ? `${status.recommendation} ${formatQuantity(mat.recommended_restock)} ${mat.unit}`
+                                          : status.recommendation}
+                                      </p>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>

@@ -604,6 +604,16 @@ def get_material_forecast():
     predictions = {p['package_slug']: p for p in forecast['predictions']}
 
     db = get_db()
+    materials_lookup = {}
+    for material in db['materials'].find():
+        name_key = str(material.get('name', '')).strip().lower()
+        unit_key = str(material.get('unit', '')).strip().lower()
+        if not name_key or not unit_key:
+            continue
+        materials_lookup[(name_key, unit_key)] = {
+            'stock': float(material.get('stock', 0) or 0),
+            'min_stock': float(material.get('min_stock', 0) or 0),
+        }
 
     packages_result = []
 
@@ -717,17 +727,43 @@ def get_material_forecast():
             daily_breakdown.append(day_info)
 
         # Round total quantities
-        total_materials = sorted(
-            [
-                {
-                    'name': v['name'],
-                    'total_quantity': round(v['total_quantity'], 2),
-                    'unit': v['unit'],
-                }
-                for v in total_agg.values()
-            ],
-            key=lambda x: -x['total_quantity'],
-        )
+        total_materials = []
+        for key, value in total_agg.items():
+            total_quantity = round(value['total_quantity'], 2)
+            stock_data = materials_lookup.get(key)
+
+            if stock_data is None:
+                current_stock = 0
+                min_stock = 0
+                stock_gap = -total_quantity
+                recommended_restock = total_quantity
+                stock_status = 'unknown'
+            else:
+                current_stock = round(stock_data['stock'], 2)
+                min_stock = round(stock_data['min_stock'], 2)
+                stock_gap = round(current_stock - total_quantity, 2)
+                recommended_restock = round(max(0, total_quantity - current_stock), 2)
+                remaining_after_prediction = current_stock - total_quantity
+
+                if recommended_restock > 0:
+                    stock_status = 'restock'
+                elif remaining_after_prediction < min_stock:
+                    stock_status = 'low'
+                else:
+                    stock_status = 'safe'
+
+            total_materials.append({
+                'name': value['name'],
+                'total_quantity': total_quantity,
+                'unit': value['unit'],
+                'current_stock': current_stock,
+                'min_stock': min_stock,
+                'stock_gap': stock_gap,
+                'recommended_restock': recommended_restock,
+                'stock_status': stock_status,
+            })
+
+        total_materials = sorted(total_materials, key=lambda x: (x['stock_status'] == 'safe', -x['recommended_restock'], -x['total_quantity']))
 
         packages_result.append({
             'package_slug': pkg_slug,
