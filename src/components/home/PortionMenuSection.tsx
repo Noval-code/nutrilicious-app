@@ -322,7 +322,6 @@ export function PortionMenuSection() {
                     <h3 className="text-2xl md:text-3xl font-black text-[#114C2A]">Menu Satuan</h3>
                     <p className="text-slate-500 text-sm md:text-base mt-1">Cocok untuk coba rasa atau pesan harian per porsi.</p>
                   </div>
-                  <span className="w-fit bg-[#F9A826]/15 text-[#114C2A] px-3 py-1.5 rounded-full text-xs font-black">Promo satuan otomatis aktif jika tersedia</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -357,7 +356,6 @@ export function PortionMenuSection() {
                     <h3 className="text-2xl md:text-3xl font-black text-[#114C2A] flex items-center gap-2"><Users className="w-7 h-7 text-[#F9A826]" /> Menu Acara & Borongan</h3>
                     <p className="text-slate-500 text-sm md:text-base mt-1">Untuk pesanan jumlah besar dengan tanggal acara dan diskon bertingkat.</p>
                   </div>
-                  <span className="w-fit bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full text-xs font-black">Diskon makin besar sesuai jumlah porsi</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
