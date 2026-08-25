@@ -239,15 +239,7 @@ export function MenuCatalog() {
                                     </button>
                                 </div>
 
-                                {/* Day Header */}
-                                {activeDay && (
-                                    <div className="text-center mb-8">
-                                        <div className="inline-flex items-center gap-2 bg-[#f2f6f4] text-[#114C2A] px-5 py-2 rounded-full text-sm font-bold border border-[#e2eae4]">
-                                            <Calendar className="w-4 h-4" />
-                                            {activeDay.day_name} — Hari ke-{activeDay.day_number}
-                                        </div>
-                                    </div>
-                                )}
+
 
                                 {/* Menu Cards Grid */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
