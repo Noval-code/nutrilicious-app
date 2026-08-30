@@ -57,7 +57,62 @@ interface PackageData {
   slug: string;
   name: string;
   description: string;
+  pricing?: Record<string, Record<string, { normal: string; promo: string }>>;
 }
+
+const getPackageConfiguredCategories = (
+  pkg?: PackageData,
+  activeCats: MenuCategory[] = []
+): { name: string; slug: string }[] => {
+  if (!pkg || !pkg.pricing || Object.keys(pkg.pricing).length === 0) {
+    return activeCats.length > 0
+      ? activeCats
+      : [
+          { name: 'Lunch', slug: 'lunch' },
+          { name: 'Dinner', slug: 'dinner' },
+        ];
+  }
+
+  // Get all pricing category names across all durations for this package
+  const pricingCategoryNames = Array.from(
+    new Set(
+      Object.values(pkg.pricing).flatMap(durObj => Object.keys(durObj || {}))
+    )
+  );
+
+  if (pricingCategoryNames.length === 0) {
+    return activeCats.length > 0
+      ? activeCats
+      : [
+          { name: 'Lunch', slug: 'lunch' },
+          { name: 'Dinner', slug: 'dinner' },
+        ];
+  }
+
+  const resultSlugs = new Set<string>();
+  pricingCategoryNames.forEach(catName => {
+    const lower = catName.toLowerCase().trim();
+    if (lower === 'lunch & dinner' || lower === 'lunch dan dinner') {
+      resultSlugs.add('lunch');
+      resultSlugs.add('dinner');
+    } else {
+      const match = activeCats.find(c => c.slug === lower || c.name.toLowerCase() === lower);
+      if (match) {
+        resultSlugs.add(match.slug);
+      } else {
+        resultSlugs.add(lower.replace(/\s+/g, '-'));
+      }
+    }
+  });
+
+  const filtered = activeCats.filter(c => resultSlugs.has(c.slug));
+  if (filtered.length > 0) return filtered;
+
+  return Array.from(resultSlugs).map(slug => ({
+    name: slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+    slug,
+  }));
+};
 
 export default function MenuSchedulesPage() {
   const [packages, setPackages] = useState<PackageData[]>([]);
@@ -114,14 +169,6 @@ export default function MenuSchedulesPage() {
     }
   }, [successMsg]);
 
-  // Active categories fallback
-  const activeCategories: { name: string; slug: string }[] = categories.length > 0
-    ? categories
-    : [
-        { name: 'Lunch', slug: 'lunch' },
-        { name: 'Dinner', slug: 'dinner' },
-      ];
-
   // Load schedule for selected package
   const selectPackage = useCallback(async (pkgId: string) => {
     setSelectedPackageId(pkgId);
@@ -141,6 +188,9 @@ export default function MenuSchedulesPage() {
       setLoadingSchedule(false);
     }
   }, []);
+
+  const selectedPkg = packages.find(p => p._id === selectedPackageId);
+  const selectedPkgCategories = getPackageConfiguredCategories(selectedPkg, categories);
 
   const getDayCategoryMenuId = (day: ScheduleDay, catSlug: string): string => {
     if (day.category_menu_ids?.[catSlug]) return day.category_menu_ids[catSlug];
@@ -210,14 +260,14 @@ export default function MenuSchedulesPage() {
     }
   };
 
-  const selectedPkg = packages.find(p => p._id === selectedPackageId);
-
-  // Check if schedule is complete for active categories
+  // Check if schedule is complete for configured categories of package
   const isScheduleComplete = (pkgId: string) => {
+    const pkg = packages.find(p => p._id === pkgId);
+    const pkgCats = getPackageConfiguredCategories(pkg, categories);
     const s = scheduleMap[pkgId];
     if (!s || !s.schedule || s.schedule.length === 0) return false;
     return s.schedule.every(day => {
-      return activeCategories.every(cat => !!getDayCategoryMenuId(day, cat.slug));
+      return pkgCats.every(cat => !!getDayCategoryMenuId(day, cat.slug));
     });
   };
 
@@ -348,7 +398,7 @@ export default function MenuSchedulesPage() {
                 {/* Schedule Grid */}
                 <div className="p-6 space-y-3">
                   {schedule.map((day, idx) => {
-                    const isDayComplete = activeCategories.every(cat => !!getDayCategoryMenuId(day, cat.slug));
+                    const isDayComplete = selectedPkgCategories.every(cat => !!getDayCategoryMenuId(day, cat.slug));
 
                     return (
                       <div key={day.day_number} className="border border-gray-100 rounded-2xl overflow-hidden hover:border-gray-200 transition-colors">
@@ -365,9 +415,9 @@ export default function MenuSchedulesPage() {
                           )}
                         </div>
 
-                        {/* Menu Selectors per Active Dynamic Category */}
+                        {/* Menu Selectors per Configured Package Category */}
                         <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {activeCategories.map(cat => {
+                          {selectedPkgCategories.map(cat => {
                             const selectedMenuId = getDayCategoryMenuId(day, cat.slug);
                             const categoryMenus = menus.filter(m => m.category === cat.slug);
                             const selectedMenu = menus.find(m => m._id === selectedMenuId);

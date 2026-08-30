@@ -43,6 +43,7 @@ interface PackageData {
     slug: string;
     name: string;
     description: string;
+    pricing?: Record<string, Record<string, { normal: string; promo: string }>>;
 }
 
 const getCategoryIcon = (catKey: string) => {
@@ -60,26 +61,63 @@ const getCategoryColor = (catKey: string, index: number) => {
     return colors[index % colors.length];
 };
 
-const buildDayMenus = (day?: ScheduleDay): { label: string; icon: React.ReactNode; color: string; menu?: MenuDetail }[] => {
-    if (!day) return [];
-    if (day.category_details && Object.keys(day.category_details).length > 0) {
-        return Object.entries(day.category_details).map(([catKey, menuDetail], idx) => ({
-            label: catKey.toUpperCase(),
-            icon: getCategoryIcon(catKey),
-            color: getCategoryColor(catKey, idx),
-            menu: menuDetail,
-        }));
+const getPackageConfiguredSlugs = (pkg?: PackageData): Set<string> => {
+    if (!pkg || !pkg.pricing || Object.keys(pkg.pricing).length === 0) {
+        return new Set(['lunch', 'dinner']);
     }
+    const categoryNames = Object.values(pkg.pricing).flatMap(durObj => Object.keys(durObj || {}));
+    if (categoryNames.length === 0) {
+        return new Set(['lunch', 'dinner']);
+    }
+    const slugs = new Set<string>();
+    categoryNames.forEach(name => {
+        const lower = name.toLowerCase().trim();
+        if (lower === 'lunch & dinner' || lower === 'lunch dan dinner') {
+            slugs.add('lunch');
+            slugs.add('dinner');
+        } else {
+            slugs.add(lower.replace(/\s+/g, '-'));
+        }
+    });
+    return slugs;
+};
+
+const buildDayMenus = (day?: ScheduleDay, pkg?: PackageData): { label: string; icon: React.ReactNode; color: string; menu?: MenuDetail }[] => {
+    if (!day) return [];
+    const configuredSlugs = getPackageConfiguredSlugs(pkg);
+
+    if (day.category_details && Object.keys(day.category_details).length > 0) {
+        const entries = Object.entries(day.category_details).filter(([catKey]) => {
+            const lower = catKey.toLowerCase().trim();
+            const slug = lower.replace(/\s+/g, '-');
+            return configuredSlugs.has(lower) || configuredSlugs.has(slug);
+        });
+
+        if (entries.length > 0) {
+            return entries.map(([catKey, menuDetail], idx) => ({
+                label: catKey.toUpperCase(),
+                icon: getCategoryIcon(catKey),
+                color: getCategoryColor(catKey, idx),
+                menu: menuDetail,
+            }));
+        }
+    }
+
     const result: { label: string; icon: React.ReactNode; color: string; menu?: MenuDetail }[] = [];
-    if (day.lunch_menu || day.lunch_menu_id) {
+    if (configuredSlugs.has('lunch') && (day.lunch_menu || day.lunch_menu_id)) {
         result.push({ label: 'LUNCH', icon: <Utensils className="w-4 h-4" />, color: '#114C2A', menu: day.lunch_menu });
     }
-    if (day.dinner_menu || day.dinner_menu_id) {
+    if (configuredSlugs.has('dinner') && (day.dinner_menu || day.dinner_menu_id)) {
         result.push({ label: 'DINNER', icon: <Moon className="w-4 h-4" />, color: '#5B21B6', menu: day.dinner_menu });
     }
     if (result.length === 0) {
-        result.push({ label: 'LUNCH', icon: <Utensils className="w-4 h-4" />, color: '#114C2A' });
-        result.push({ label: 'DINNER', icon: <Moon className="w-4 h-4" />, color: '#5B21B6' });
+        Array.from(configuredSlugs).forEach((slug, idx) => {
+            result.push({
+                label: slug.toUpperCase(),
+                icon: getCategoryIcon(slug),
+                color: getCategoryColor(slug, idx),
+            });
+        });
     }
     return result;
 };
@@ -140,8 +178,8 @@ export function MenuCatalog() {
     const activeDay = days[activeDayIdx];
     const hasSchedule = activeSchedule && !activeSchedule.is_empty && days.length > 0;
 
-    // Collect all menus for the active day dynamically
-    const dayMenus = buildDayMenus(activeDay);
+    // Collect all menus for the active day dynamically filtered by package categories
+    const dayMenus = buildDayMenus(activeDay, activePackage);
 
     const goToPrevDay = () => setActiveDayIdx(prev => Math.max(0, prev - 1));
     const goToNextDay = () => setActiveDayIdx(prev => Math.min(days.length - 1, prev + 1));
