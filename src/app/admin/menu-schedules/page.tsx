@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   ChevronDown,
   UtensilsCrossed,
-  Moon,
   X,
 } from 'lucide-react';
 
@@ -25,14 +24,22 @@ interface MenuItem {
   image_url?: string;
 }
 
+interface MenuCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  is_active: boolean;
+}
+
 interface ScheduleDay {
   day_number: number;
   day_name: string;
-  lunch_menu_id: string;
-  dinner_menu_id: string;
-  drink_menu_id: string;
+  lunch_menu_id?: string;
+  dinner_menu_id?: string;
+  category_menu_ids?: Record<string, string>;
   lunch_menu?: { _id: string; title: string; items: string[]; image_url?: string };
   dinner_menu?: { _id: string; title: string; items: string[]; image_url?: string };
+  category_details?: Record<string, { _id: string; title: string; items: string[]; image_url?: string }>;
 }
 
 interface Schedule {
@@ -55,6 +62,7 @@ interface PackageData {
 export default function MenuSchedulesPage() {
   const [packages, setPackages] = useState<PackageData[]>([]);
   const [menus, setMenus] = useState<MenuItem[]>([]);
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
   const [scheduleMap, setScheduleMap] = useState<Record<string, Schedule>>({});
@@ -65,18 +73,20 @@ export default function MenuSchedulesPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Fetch packages and menus
+  // Fetch packages, menus, schedules, and categories
   const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
-      const [pkgRes, menuRes, schedRes] = await Promise.all([
+      const [pkgRes, menuRes, schedRes, catRes] = await Promise.all([
         fetch(`${API_URL}/packages/`),
         fetch(`${API_URL}/menus/`),
         fetch(`${API_URL}/schedules/`),
+        fetch(`${API_URL}/menu-categories/?active_only=true`),
       ]);
 
       if (pkgRes.ok) setPackages(await pkgRes.json());
       if (menuRes.ok) setMenus(await menuRes.json());
+      if (catRes.ok) setCategories(await catRes.json());
       if (schedRes.ok) {
         const allSchedules: Schedule[] = await schedRes.json();
         const map: Record<string, Schedule> = {};
@@ -104,6 +114,14 @@ export default function MenuSchedulesPage() {
     }
   }, [successMsg]);
 
+  // Active categories fallback
+  const activeCategories: { name: string; slug: string }[] = categories.length > 0
+    ? categories
+    : [
+        { name: 'Lunch', slug: 'lunch' },
+        { name: 'Dinner', slug: 'dinner' },
+      ];
+
   // Load schedule for selected package
   const selectPackage = useCallback(async (pkgId: string) => {
     setSelectedPackageId(pkgId);
@@ -124,11 +142,32 @@ export default function MenuSchedulesPage() {
     }
   }, []);
 
-  // Update schedule day
-  const updateDay = (dayIndex: number, field: 'lunch_menu_id' | 'dinner_menu_id', value: string) => {
+  const getDayCategoryMenuId = (day: ScheduleDay, catSlug: string): string => {
+    if (day.category_menu_ids?.[catSlug]) return day.category_menu_ids[catSlug];
+    if (catSlug === 'lunch' && day.lunch_menu_id) return day.lunch_menu_id;
+    if (catSlug === 'dinner' && day.dinner_menu_id) return day.dinner_menu_id;
+    return '';
+  };
+
+  // Update schedule day for a dynamic category
+  const updateDayCategoryMenu = (dayIndex: number, catSlug: string, value: string) => {
     setSchedule(prev => {
       const updated = [...prev];
-      updated[dayIndex] = { ...updated[dayIndex], [field]: value };
+      const day = updated[dayIndex];
+      const catMenuIds = { ...(day.category_menu_ids || {}) };
+      catMenuIds[catSlug] = value;
+
+      let lunchId = day.lunch_menu_id;
+      let dinnerId = day.dinner_menu_id;
+      if (catSlug === 'lunch') lunchId = value;
+      if (catSlug === 'dinner') dinnerId = value;
+
+      updated[dayIndex] = {
+        ...day,
+        lunch_menu_id: lunchId,
+        dinner_menu_id: dinnerId,
+        category_menu_ids: catMenuIds,
+      };
       return updated;
     });
     setHasChanges(true);
@@ -171,24 +210,22 @@ export default function MenuSchedulesPage() {
     }
   };
 
-  // Filter menus by category
-  const lunchMenus = menus.filter(m => m.category === 'lunch');
-  const dinnerMenus = menus.filter(m => m.category === 'dinner');
-
   const selectedPkg = packages.find(p => p._id === selectedPackageId);
 
-  // Check if schedule is complete
+  // Check if schedule is complete for active categories
   const isScheduleComplete = (pkgId: string) => {
     const s = scheduleMap[pkgId];
-    if (!s || !s.schedule) return false;
-    return s.schedule.every(day => day.lunch_menu_id && day.dinner_menu_id);
+    if (!s || !s.schedule || s.schedule.length === 0) return false;
+    return s.schedule.every(day => {
+      return activeCategories.every(cat => !!getDayCategoryMenuId(day, cat.slug));
+    });
   };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
         <h1 className="text-3xl font-extrabold text-[#114C2A] tracking-tight">Jadwal Menu</h1>
-        <p className="text-slate-500 mt-1">Atur jadwal menu 6 hari (Senin–Sabtu) untuk setiap paket langganan.</p>
+        <p className="text-slate-500 mt-1">Atur jadwal menu 6 hari (Senin–Sabtu) untuk setiap paket langganan secara dinamis.</p>
       </div>
 
       {/* Success Message */}
@@ -310,77 +347,66 @@ export default function MenuSchedulesPage() {
 
                 {/* Schedule Grid */}
                 <div className="p-6 space-y-3">
-                  {schedule.map((day, idx) => (
-                    <div key={day.day_number} className="border border-gray-100 rounded-2xl overflow-hidden hover:border-gray-200 transition-colors">
-                      {/* Day Header */}
-                      <div className="bg-slate-50 px-4 py-2.5 border-b border-gray-100 flex items-center gap-3">
-                        <span className="w-7 h-7 rounded-lg bg-[#114C2A] text-white text-xs font-black flex items-center justify-center">
-                          {day.day_number}
-                        </span>
-                        <span className="font-bold text-sm text-slate-700">{day.day_name}</span>
-                        {day.lunch_menu_id && day.dinner_menu_id ? (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500 ml-auto" />
-                        ) : (
-                          <span className="ml-auto text-[10px] font-bold text-amber-500">Belum lengkap</span>
-                        )}
-                      </div>
+                  {schedule.map((day, idx) => {
+                    const isDayComplete = activeCategories.every(cat => !!getDayCategoryMenuId(day, cat.slug));
 
-                      {/* Menu Selectors */}
-                      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Lunch */}
-                        <div>
-                          <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 mb-2">
-                            <UtensilsCrossed className="w-3.5 h-3.5 text-amber-500" />
-                            Lunch
-                          </label>
-                          <div className="relative">
-                            <select
-                              value={day.lunch_menu_id || ''}
-                              onChange={(e) => updateDay(idx, 'lunch_menu_id', e.target.value)}
-                              className="w-full appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2.5 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#F9A826] focus:border-transparent cursor-pointer hover:border-gray-300 transition-colors"
-                            >
-                              <option value="">— Pilih Menu Lunch —</option>
-                              {lunchMenus.map(m => (
-                                <option key={m._id} value={m._id}>{m.title}</option>
-                              ))}
-                            </select>
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                          </div>
-                          {day.lunch_menu_id && (
-                            <p className="text-[10px] text-slate-400 mt-1.5 pl-1">
-                              {lunchMenus.find(m => m._id === day.lunch_menu_id)?.items?.join(' • ') || ''}
-                            </p>
+                    return (
+                      <div key={day.day_number} className="border border-gray-100 rounded-2xl overflow-hidden hover:border-gray-200 transition-colors">
+                        {/* Day Header */}
+                        <div className="bg-slate-50 px-4 py-2.5 border-b border-gray-100 flex items-center gap-3">
+                          <span className="w-7 h-7 rounded-lg bg-[#114C2A] text-white text-xs font-black flex items-center justify-center">
+                            {day.day_number}
+                          </span>
+                          <span className="font-bold text-sm text-slate-700">{day.day_name}</span>
+                          {isDayComplete ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500 ml-auto" />
+                          ) : (
+                            <span className="ml-auto text-[10px] font-bold text-amber-500">Belum lengkap</span>
                           )}
                         </div>
 
-                        {/* Dinner */}
-                        <div>
-                          <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 mb-2">
-                            <Moon className="w-3.5 h-3.5 text-indigo-500" />
-                            Dinner
-                          </label>
-                          <div className="relative">
-                            <select
-                              value={day.dinner_menu_id || ''}
-                              onChange={(e) => updateDay(idx, 'dinner_menu_id', e.target.value)}
-                              className="w-full appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2.5 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#F9A826] focus:border-transparent cursor-pointer hover:border-gray-300 transition-colors"
-                            >
-                              <option value="">— Pilih Menu Dinner —</option>
-                              {dinnerMenus.map(m => (
-                                <option key={m._id} value={m._id}>{m.title}</option>
-                              ))}
-                            </select>
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                          </div>
-                          {day.dinner_menu_id && (
-                            <p className="text-[10px] text-slate-400 mt-1.5 pl-1">
-                              {dinnerMenus.find(m => m._id === day.dinner_menu_id)?.items?.join(' • ') || ''}
-                            </p>
-                          )}
+                        {/* Menu Selectors per Active Dynamic Category */}
+                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {activeCategories.map(cat => {
+                            const selectedMenuId = getDayCategoryMenuId(day, cat.slug);
+                            const categoryMenus = menus.filter(m => m.category === cat.slug);
+                            const selectedMenu = menus.find(m => m._id === selectedMenuId);
+
+                            return (
+                              <div key={cat.slug}>
+                                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 mb-2 capitalize">
+                                  <UtensilsCrossed className="w-3.5 h-3.5 text-amber-500" />
+                                  Menu {cat.name}
+                                </label>
+                                <div className="relative">
+                                  <select
+                                    value={selectedMenuId}
+                                    onChange={(e) => updateDayCategoryMenu(idx, cat.slug, e.target.value)}
+                                    className="w-full appearance-none bg-white border border-gray-200 rounded-xl px-3 py-2.5 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#F9A826] focus:border-transparent cursor-pointer hover:border-gray-300 transition-colors"
+                                  >
+                                    <option value="">— Pilih Menu {cat.name} —</option>
+                                    {categoryMenus.map(m => (
+                                      <option key={m._id} value={m._id}>{m.title}</option>
+                                    ))}
+                                    {/* Fallback if menu in another category is selected */}
+                                    {selectedMenu && !categoryMenus.some(m => m._id === selectedMenu._id) && (
+                                      <option value={selectedMenu._id}>{selectedMenu.title}</option>
+                                    )}
+                                  </select>
+                                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                </div>
+                                {selectedMenuId && selectedMenu && (
+                                  <p className="text-[10px] text-slate-400 mt-1.5 pl-1">
+                                    {selectedMenu.items?.join(' • ') || ''}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Footer: Save Button */}

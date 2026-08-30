@@ -21,12 +21,12 @@ interface MenuDetail {
 interface ScheduleDay {
     day_number: number;
     day_name: string;
-    lunch_menu_id: string;
-    dinner_menu_id: string;
-    drink_menu_id: string;
+    lunch_menu_id?: string;
+    dinner_menu_id?: string;
+    category_menu_ids?: Record<string, string>;
     lunch_menu?: MenuDetail;
     dinner_menu?: MenuDetail;
-    drink_menu?: MenuDetail;
+    category_details?: Record<string, MenuDetail>;
 }
 
 interface ScheduleData {
@@ -44,6 +44,45 @@ interface PackageData {
     name: string;
     description: string;
 }
+
+const getCategoryIcon = (catKey: string) => {
+    const key = catKey.toLowerCase();
+    if (key.includes('lunch')) return <Utensils className="w-4 h-4" />;
+    if (key.includes('dinner')) return <Moon className="w-4 h-4" />;
+    return <Sparkles className="w-4 h-4" />;
+};
+
+const getCategoryColor = (catKey: string, index: number) => {
+    const colors = ['#114C2A', '#5B21B6', '#D97706', '#2563EB', '#DB2777'];
+    const key = catKey.toLowerCase();
+    if (key.includes('lunch')) return '#114C2A';
+    if (key.includes('dinner')) return '#5B21B6';
+    return colors[index % colors.length];
+};
+
+const buildDayMenus = (day?: ScheduleDay): { label: string; icon: React.ReactNode; color: string; menu?: MenuDetail }[] => {
+    if (!day) return [];
+    if (day.category_details && Object.keys(day.category_details).length > 0) {
+        return Object.entries(day.category_details).map(([catKey, menuDetail], idx) => ({
+            label: catKey.toUpperCase(),
+            icon: getCategoryIcon(catKey),
+            color: getCategoryColor(catKey, idx),
+            menu: menuDetail,
+        }));
+    }
+    const result: { label: string; icon: React.ReactNode; color: string; menu?: MenuDetail }[] = [];
+    if (day.lunch_menu || day.lunch_menu_id) {
+        result.push({ label: 'LUNCH', icon: <Utensils className="w-4 h-4" />, color: '#114C2A', menu: day.lunch_menu });
+    }
+    if (day.dinner_menu || day.dinner_menu_id) {
+        result.push({ label: 'DINNER', icon: <Moon className="w-4 h-4" />, color: '#5B21B6', menu: day.dinner_menu });
+    }
+    if (result.length === 0) {
+        result.push({ label: 'LUNCH', icon: <Utensils className="w-4 h-4" />, color: '#114C2A' });
+        result.push({ label: 'DINNER', icon: <Moon className="w-4 h-4" />, color: '#5B21B6' });
+    }
+    return result;
+};
 
 export function MenuCatalog() {
     const [packages, setPackages] = useState<PackageData[]>([]);
@@ -101,11 +140,8 @@ export function MenuCatalog() {
     const activeDay = days[activeDayIdx];
     const hasSchedule = activeSchedule && !activeSchedule.is_empty && days.length > 0;
 
-    // Collect all menus for the active day
-    const dayMenus: { label: string; icon: React.ReactNode; color: string; menu?: MenuDetail }[] = activeDay ? [
-        { label: 'Lunch', icon: <Utensils className="w-4 h-4" />, color: '#114C2A', menu: activeDay.lunch_menu },
-        { label: 'Dinner', icon: <Moon className="w-4 h-4" />, color: '#5B21B6', menu: activeDay.dinner_menu },
-    ] : [];
+    // Collect all menus for the active day dynamically
+    const dayMenus = buildDayMenus(activeDay);
 
     const goToPrevDay = () => setActiveDayIdx(prev => Math.max(0, prev - 1));
     const goToNextDay = () => setActiveDayIdx(prev => Math.min(days.length - 1, prev + 1));

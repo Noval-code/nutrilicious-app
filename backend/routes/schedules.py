@@ -18,6 +18,11 @@ schedules_bp = Blueprint('schedules', __name__)
 
 DAY_NAMES = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
 
+# Alur route schedules:
+# Admin menyimpan template jadwal 6 hari untuk tiap paket. Frontend user dapat
+# meminta jadwal berdasarkan package_id atau slug, lalu route dapat melakukan
+# populate detail menu agar response sudah berisi nama, gambar, dan nutrisi.
+
 
 def serialize_schedule(doc):
     """Convert MongoDB document to JSON-serializable dict"""
@@ -32,19 +37,28 @@ def serialize_schedule(doc):
 
 
 def populate_menu_details(db, schedule_doc):
-    """Populate menu details (title, items, image, nutrition) into schedule entries"""
+    """Populate menu details (title, items, image, nutrition) into schedule entries for all dynamic categories"""
     if 'schedule' not in schedule_doc:
         return schedule_doc
 
     for day in schedule_doc['schedule']:
-        # Populate lunch menu
-        if day.get('lunch_menu_id'):
+        cat_ids = dict(day.get('category_menu_ids') or day.get('menu_ids') or {})
+        if day.get('lunch_menu_id') and 'lunch' not in cat_ids:
+            cat_ids['lunch'] = day['lunch_menu_id']
+        if day.get('dinner_menu_id') and 'dinner' not in cat_ids:
+            cat_ids['dinner'] = day['dinner_menu_id']
+
+        category_details = {}
+        for cat_slug, m_id in cat_ids.items():
+            if not m_id:
+                continue
             try:
-                menu = db['menus'].find_one({'_id': ObjectId(day['lunch_menu_id'])})
+                menu = db['menus'].find_one({'_id': ObjectId(m_id)})
                 if menu:
-                    day['lunch_menu'] = {
+                    detail = {
                         '_id': str(menu['_id']),
                         'title': menu.get('title', ''),
+                        'category': menu.get('category', cat_slug),
                         'items': menu.get('items', []),
                         'image_url': menu.get('image_url', ''),
                         'calories': menu.get('calories', 0),
@@ -53,27 +67,15 @@ def populate_menu_details(db, schedule_doc):
                         'fat': menu.get('fat', 0),
                         'sugar': menu.get('sugar', 0),
                     }
+                    category_details[cat_slug] = detail
+                    if cat_slug == 'lunch':
+                        day['lunch_menu'] = detail
+                    elif cat_slug == 'dinner':
+                        day['dinner_menu'] = detail
             except Exception:
                 pass
 
-        # Populate dinner menu
-        if day.get('dinner_menu_id'):
-            try:
-                menu = db['menus'].find_one({'_id': ObjectId(day['dinner_menu_id'])})
-                if menu:
-                    day['dinner_menu'] = {
-                        '_id': str(menu['_id']),
-                        'title': menu.get('title', ''),
-                        'items': menu.get('items', []),
-                        'image_url': menu.get('image_url', ''),
-                        'calories': menu.get('calories', 0),
-                        'protein': menu.get('protein', 0),
-                        'carbs': menu.get('carbs', 0),
-                        'fat': menu.get('fat', 0),
-                        'sugar': menu.get('sugar', 0),
-                    }
-            except Exception:
-                pass
+        day['category_details'] = category_details
 
     return schedule_doc
 
@@ -88,6 +90,7 @@ def get_all_schedules():
 
     result = []
     for s in schedules:
+        # Query ?populate=true dipakai ketika frontend butuh detail menu lengkap.
         if populate_details:
             s = populate_menu_details(db, s)
         result.append(serialize_schedule(s))
@@ -140,19 +143,28 @@ def save_schedule(package_id):
     if not isinstance(schedule_data, list) or len(schedule_data) != 6:
         return jsonify({'error': 'Schedule harus berisi 6 hari (Senin-Sabtu)'}), 400
 
-    # Build clean schedule entries
+    # Build clean schedule entries with dynamic category support
     clean_schedule = []
     for i, day in enumerate(schedule_data):
+        category_menu_ids = dict(day.get('category_menu_ids') or day.get('menu_ids') or {})
+        if day.get('lunch_menu_id') and 'lunch' not in category_menu_ids:
+            category_menu_ids['lunch'] = day['lunch_menu_id']
+        if day.get('dinner_menu_id') and 'dinner' not in category_menu_ids:
+            category_menu_ids['dinner'] = day['dinner_menu_id']
+
         clean_schedule.append({
             'day_number': i + 1,
             'day_name': DAY_NAMES[i],
-            'lunch_menu_id': day.get('lunch_menu_id', ''),
-            'dinner_menu_id': day.get('dinner_menu_id', ''),
+            'lunch_menu_id': category_menu_ids.get('lunch', day.get('lunch_menu_id', '')),
+            'dinner_menu_id': category_menu_ids.get('dinner', day.get('dinner_menu_id', '')),
+            'category_menu_ids': category_menu_ids,
         })
 
     now = datetime.now()
 
     # Upsert: update if exists, insert if not
+    # Satu paket hanya punya satu dokumen jadwal aktif; update_one + upsert
+    # memastikan jadwal dibuat jika belum ada, atau diperbarui jika sudah ada.
     result = db['menu_schedules'].update_one(
         {'package_id': ObjectId(package_id)},
         {
