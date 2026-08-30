@@ -6,8 +6,6 @@ import { useCart } from '@/components/cart/CartProvider';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 
-const mealTypesList = ["Lunch", "Dinner", "Lunch & Dinner"];
-
 function priceToNumber(value: string) {
     return parseInt(String(value || '').replace(/\./g, ''), 10) || 0;
 }
@@ -50,6 +48,26 @@ export function PricingSection() {
     const { addItem } = useCart();
 
     const daysList = Array.from(new Set(packages.flatMap(pkg => Object.keys(pkg.pricing || {}))));
+    
+    // Dynamically extract meal types/categories from actual package pricing data
+    const extractedMealTypes = Array.from(
+        new Set(
+            packages.flatMap(pkg => {
+                if (!pkg.pricing) return [];
+                if (selectedDay && pkg.pricing[selectedDay]) {
+                    return Object.keys(pkg.pricing[selectedDay]);
+                }
+                return Object.values(pkg.pricing).flatMap(durObj => Object.keys(durObj || {}));
+            })
+        )
+    );
+    const mealTypesList = extractedMealTypes.length > 0 ? extractedMealTypes : ["Lunch", "Dinner", "Lunch & Dinner"];
+
+    useEffect(() => {
+        if (mealTypesList.length > 0 && !mealTypesList.includes(selectedMeal)) {
+            setSelectedMeal(mealTypesList[0]);
+        }
+    }, [mealTypesList, selectedMeal]);
 
     const fetchPackages = useCallback(async () => {
         try {

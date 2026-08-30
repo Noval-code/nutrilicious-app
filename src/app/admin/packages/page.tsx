@@ -7,9 +7,6 @@ import { Plus, Edit2, Trash2, X, Save, CalendarDays, DollarSign, Loader2, AlertC
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
 
 const DEFAULT_DURATIONS = ["5 Hari", "6 Hari", "10 Hari", "30 Hari"];
-const MEAL_TYPES = ["Lunch", "Dinner", "Lunch & Dinner"];
-
-
 
 interface PackageData {
   _id?: string;
@@ -19,25 +16,45 @@ interface PackageData {
   pricing: Record<string, Record<string, { normal: string; promo: string }>>;
 }
 
-const emptyPricing = (): PackageData['pricing'] => {
+interface MenuCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  is_active: boolean;
+}
+
+const getCategoryOptions = (catList: MenuCategory[]): string[] => {
+  const names = catList.map(c => c.name).filter(Boolean);
+  if (names.length === 0) {
+    return ["Lunch", "Dinner", "Lunch & Dinner"];
+  }
+  const options = [...names];
+  if (names.includes("Lunch") && names.includes("Dinner") && !options.includes("Lunch & Dinner")) {
+    options.push("Lunch & Dinner");
+  }
+  return options;
+};
+
+const emptyPricing = (catOptions: string[] = ["Lunch", "Dinner", "Lunch & Dinner"]): PackageData['pricing'] => {
   const pricing: PackageData['pricing'] = {};
   DEFAULT_DURATIONS.forEach(dur => {
     pricing[dur] = {};
-    MEAL_TYPES.forEach(meal => {
+    catOptions.forEach(meal => {
       pricing[dur][meal] = { normal: '', promo: '' };
     });
   });
   return pricing;
 };
 
-const emptyForm = (): PackageData => ({
+const emptyForm = (catOptions: string[] = ["Lunch", "Dinner", "Lunch & Dinner"]): PackageData => ({
   name: '',
   description: '',
-  pricing: emptyPricing(),
+  pricing: emptyPricing(catOptions),
 });
 
 export default function PackagesPage() {
   const [packages, setPackages] = useState<PackageData[]>([]);
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'pricing'>('info');
   const [formData, setFormData] = useState<PackageData>(emptyForm());
@@ -48,9 +65,20 @@ export default function PackagesPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [newDuration, setNewDuration] = useState('');
 
+  // Fetch categories from API
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/menu-categories/?active_only=true`);
+      if (res.ok) {
+        const data: MenuCategory[] = await res.json();
+        setCategories(data);
+      }
+    } catch (err: any) {
+      console.error('Gagal memuat kategori menu:', err);
+    }
+  }, []);
 
-
-  // Fetch packages and menus from API
+  // Fetch packages from API
   const fetchPackages = useCallback(async () => {
     try {
       setLoading(true);
@@ -64,8 +92,9 @@ export default function PackagesPage() {
   }, []);
 
   useEffect(() => {
+    fetchCategories();
     fetchPackages();
-  }, [fetchPackages]);
+  }, [fetchCategories, fetchPackages]);
 
   // Auto-hide success message
   useEffect(() => {
@@ -75,11 +104,10 @@ export default function PackagesPage() {
     }
   }, [successMsg]);
 
-
-
   // Open form for creating
   const handleOpenCreate = () => {
-    setFormData(emptyForm());
+    const catOptions = getCategoryOptions(categories);
+    setFormData(emptyForm(catOptions));
     setEditingId(null);
     setActiveTab('info');
     setNewDuration('');
@@ -89,18 +117,26 @@ export default function PackagesPage() {
 
   // Open form for editing
   const handleOpenEdit = (pkg: PackageData) => {
-    // Preserve custom durations while ensuring every duration has all meal types.
+    const catOptions = getCategoryOptions(categories);
     const fullPricing: PackageData['pricing'] = {};
     if (pkg.pricing) {
       Object.keys(pkg.pricing).forEach(dur => {
         fullPricing[dur] = {};
-        MEAL_TYPES.forEach(meal => {
-          fullPricing[dur][meal] = pkg.pricing[dur]?.[meal] || { normal: '', promo: '' };
+        const existingCats = Object.keys(pkg.pricing[dur] || {});
+        // Preserve all existing pricing categories for this duration
+        existingCats.forEach(cat => {
+          fullPricing[dur][cat] = pkg.pricing[dur][cat] || { normal: '', promo: '' };
         });
+        // If a duration has no categories yet, populate with default available options
+        if (existingCats.length === 0) {
+          catOptions.forEach(cat => {
+            fullPricing[dur][cat] = { normal: '', promo: '' };
+          });
+        }
       });
     }
     if (Object.keys(fullPricing).length === 0) {
-      Object.assign(fullPricing, emptyPricing());
+      Object.assign(fullPricing, emptyPricing(catOptions));
     }
     setFormData({ ...pkg, pricing: fullPricing });
     setEditingId(pkg._id || null);
@@ -134,6 +170,34 @@ export default function PackagesPage() {
     }));
   };
 
+  const addCategoryToDuration = (duration: string, catName: string) => {
+    if (!catName.trim()) return;
+    setFormData(prev => ({
+      ...prev,
+      pricing: {
+        ...prev.pricing,
+        [duration]: {
+          ...prev.pricing[duration],
+          [catName]: prev.pricing[duration]?.[catName] || { normal: '', promo: '' },
+        }
+      }
+    }));
+  };
+
+  const removeCategoryFromDuration = (duration: string, catName: string) => {
+    setFormData(prev => {
+      const nextDurationPricing = { ...prev.pricing[duration] };
+      delete nextDurationPricing[catName];
+      return {
+        ...prev,
+        pricing: {
+          ...prev.pricing,
+          [duration]: nextDurationPricing,
+        }
+      };
+    });
+  };
+
   const addDuration = () => {
     const duration = newDuration.trim();
     if (!duration) {
@@ -145,8 +209,9 @@ export default function PackagesPage() {
       return;
     }
 
+    const catOptions = getCategoryOptions(categories);
     const durationPricing: Record<string, { normal: string; promo: string }> = {};
-    MEAL_TYPES.forEach(meal => {
+    catOptions.forEach(meal => {
       durationPricing[meal] = { normal: '', promo: '' };
     });
 
@@ -400,47 +465,96 @@ export default function PackagesPage() {
                     </button>
                   </div>
 
-                  {Object.keys(formData.pricing).map(duration => (
-                    <div key={duration} className="border border-gray-200 rounded-xl overflow-hidden">
-                      <div className="bg-slate-50 p-3 border-b border-gray-200 font-bold text-sm flex items-center justify-between gap-3">
-                        <span>Durasi {duration}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeDuration(duration)}
-                          className="text-red-500 hover:bg-red-50 rounded-lg px-2 py-1 text-xs font-bold flex items-center gap-1"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" /> Hapus
-                        </button>
-                      </div>
-                      <div className="p-4 space-y-4">
-                        {MEAL_TYPES.map((meal, idx) => (
-                          <div key={meal} className={`grid grid-cols-3 gap-4 ${idx < MEAL_TYPES.length - 1 ? 'border-b border-gray-50 pb-4' : ''}`}>
-                            <div className="text-sm font-bold text-slate-600 flex items-center">{meal}</div>
-                            <div>
-                              <label className="text-xs text-slate-400">Normal</label>
-                              <input 
-                                type="text" 
-                                value={formData.pricing[duration]?.[meal]?.normal || ''}
-                                onChange={(e) => updatePricing(duration, meal, 'normal', e.target.value)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#F9A826]" 
-                                placeholder="180.000"
-                              />
+                  {Object.keys(formData.pricing).map(duration => {
+                    const currentCats = Object.keys(formData.pricing[duration] || {});
+                    const catOptions = getCategoryOptions(categories);
+
+                    return (
+                      <div key={duration} className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                        <div className="bg-slate-50 p-3 border-b border-gray-200 font-bold text-sm flex items-center justify-between gap-3">
+                          <span className="flex items-center gap-2 text-slate-800">
+                            <CalendarDays className="w-4 h-4 text-[#114C2A]" />
+                            Durasi {duration}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeDuration(duration)}
+                            className="text-red-500 hover:bg-red-50 rounded-lg px-2 py-1 text-xs font-bold flex items-center gap-1 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Hapus Durasi
+                          </button>
+                        </div>
+
+                        <div className="p-4 space-y-4">
+                          {currentCats.map((catName, idx) => (
+                            <div key={catName} className={`grid grid-cols-1 sm:grid-cols-12 gap-3 items-center ${idx < currentCats.length - 1 ? 'border-b border-gray-50 pb-4' : ''}`}>
+                              <div className="sm:col-span-4 flex items-center justify-between pr-2">
+                                <span className="text-sm font-bold text-slate-700">{catName}</span>
+                                {currentCats.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeCategoryFromDuration(duration, catName)}
+                                    title={`Hapus kategori ${catName} dari durasi ini`}
+                                    className="text-slate-300 hover:text-red-500 p-1 transition-colors"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                              <div className="sm:col-span-4">
+                                <label className="text-[11px] text-slate-400 font-semibold block mb-0.5">Normal (Rp)</label>
+                                <input 
+                                  type="text" 
+                                  value={formData.pricing[duration]?.[catName]?.normal || ''}
+                                  onChange={(e) => updatePricing(duration, catName, 'normal', e.target.value)}
+                                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#F9A826]" 
+                                  placeholder="180.000"
+                                />
+                              </div>
+                              <div className="sm:col-span-4">
+                                <label className="text-[11px] text-[#114C2A] font-semibold block mb-0.5">Promo (Rp)</label>
+                                <input 
+                                  type="text" 
+                                  value={formData.pricing[duration]?.[catName]?.promo || ''}
+                                  onChange={(e) => updatePricing(duration, catName, 'promo', e.target.value)}
+                                  className="w-full border border-[#114C2A]/30 rounded-lg px-3 py-1.5 text-sm font-bold text-[#114C2A] focus:outline-none focus:ring-2 focus:ring-[#F9A826]" 
+                                  placeholder="150.000"
+                                />
+                              </div>
                             </div>
-                            <div>
-                              <label className="text-xs text-[#114C2A] font-semibold">Promo</label>
-                              <input 
-                                type="text" 
-                                value={formData.pricing[duration]?.[meal]?.promo || ''}
-                                onChange={(e) => updatePricing(duration, meal, 'promo', e.target.value)}
-                                className="w-full border border-[#114C2A]/30 rounded-lg px-3 py-1.5 text-sm font-bold text-[#114C2A] focus:outline-none focus:ring-2 focus:ring-[#F9A826]" 
-                                placeholder="150.000"
-                              />
-                            </div>
+                          ))}
+
+                          {currentCats.length === 0 && (
+                            <p className="text-xs text-slate-400 font-medium italic">Belum ada kategori harga untuk durasi ini.</p>
+                          )}
+
+                          {/* Select Option Dropdown for adding dynamic menu category to this duration */}
+                          <div className="pt-3 border-t border-dashed border-gray-200 flex flex-col sm:flex-row gap-2 items-center">
+                            <select
+                              className="w-full bg-slate-50 hover:bg-slate-100 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#F9A826] cursor-pointer transition-colors"
+                              defaultValue=""
+                              onChange={(e) => {
+                                const selectedCat = e.target.value;
+                                if (selectedCat) {
+                                  addCategoryToDuration(duration, selectedCat);
+                                  e.target.value = "";
+                                }
+                              }}
+                            >
+                              <option value="" disabled>+ Tambah Kategori Harga (Select Option)...</option>
+                              {catOptions
+                                .filter(cat => !currentCats.includes(cat))
+                                .map(cat => (
+                                  <option key={cat} value={cat}>
+                                    {cat}
+                                  </option>
+                                ))}
+                            </select>
                           </div>
-                        ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
