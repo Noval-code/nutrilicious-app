@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { CalendarDays, Utensils, UtensilsCrossed, CheckCircle2, ShoppingCart, Check, AlertCircle, RefreshCw } from 'lucide-react';
+import { CalendarDays, ShoppingCart, Check, AlertCircle, RefreshCw } from 'lucide-react';
 import { useCart } from '@/components/cart/CartProvider';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL || ''}/api`;
@@ -175,7 +175,6 @@ export function PricingSection() {
                                                 : 'bg-white text-slate-500 hover:bg-gray-50 border-gray-100'
                                             }`}
                                       >   
-                                          {selectedDay === day && <CheckCircle2 className="w-4 h-4 mr-2 text-[#F9A826] hidden lg:block" />}
                                           <span className="whitespace-nowrap">{day}</span>
                                       </button>
                                    ))}
@@ -204,9 +203,6 @@ export function PricingSection() {
                                                 : 'bg-transparent text-slate-500 hover:bg-gray-50'
                                             }`}
                                     >
-                                        {meal === 'Lunch' && <Utensils className="w-4 h-4" />}
-                                        {meal === 'Dinner' && <Utensils className="w-4 h-4" />}
-                                        {meal === 'Lunch & Dinner' && <UtensilsCrossed className="w-4 h-4" />}
                                         {meal}
                                     </button>
                                 ))}
@@ -274,14 +270,10 @@ export function PricingSection() {
                                                         <span className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter">{formatPriceDisplay(getPackageFinalPrice(pricing))}</span>
                                                     </div>
                                                     {hasPackagePromo(pricing) && (
-                                                        <div className="text-xs font-black text-[#F9A826] mt-1">
+                                                        <div className="text-sm md:text-base font-black text-[#F9A826] mt-1.5">
                                                             Promo hemat {promoDiscountPercent(pricing)}%
                                                         </div>
                                                     )}
-                                                    <div className="text-xs md:text-sm text-slate-500 mt-2 font-medium flex items-center gap-1">
-                                                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F9A826]"></span>
-                                                        Untuk {selectedDay} ({selectedMeal})
-                                                    </div>
                                                 </div>
                                             </div>
 
