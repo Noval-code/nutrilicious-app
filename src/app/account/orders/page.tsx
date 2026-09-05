@@ -647,9 +647,27 @@ export default function MyOrdersPage() {
         </Link>
 
         <h1 className="text-3xl font-extrabold text-[#005D33] mb-2">Pesanan Saya</h1>
-        <p className="text-slate-500 text-sm mb-8">
+        <p className="text-slate-500 text-sm mb-6">
           Pantau status dan riwayat seluruh pesanan Anda.
         </p>
+
+        {/* Total Pengeluaran Summary */}
+        {!loading && orders.length > 0 && (
+          <div className="bg-gradient-to-r from-[#005D33] to-[#007a44] rounded-2xl p-5 text-white shadow-lg mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-white/70 uppercase tracking-wider mb-1">Total Pengeluaran</p>
+                <p className="text-2xl font-black tracking-tight">
+                  {formatCurrency(orders.reduce((sum, o) => sum + (o.total || 0), 0))}
+                </p>
+                <p className="text-xs text-white/60 mt-1">{orders.length} pesanan</p>
+              </div>
+              <div className="w-14 h-14 bg-white/15 rounded-2xl flex items-center justify-center">
+                <ShoppingBag className="w-7 h-7 text-white" />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Status Filter Pills */}
         <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
@@ -701,23 +719,7 @@ export default function MyOrdersPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Total Pengeluaran Summary */}
-            {filterStatus === "all" && orders.length > 0 && (
-              <div className="bg-gradient-to-r from-[#005D33] to-[#007a44] rounded-2xl p-5 text-white shadow-lg mb-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold text-white/70 uppercase tracking-wider mb-1">Total Pengeluaran</p>
-                    <p className="text-2xl font-black tracking-tight">
-                      {formatCurrency(orders.reduce((sum, o) => sum + (o.total || 0), 0))}
-                    </p>
-                    <p className="text-xs text-white/60 mt-1">{orders.length} pesanan · semua status</p>
-                  </div>
-                  <div className="w-14 h-14 bg-white/15 rounded-2xl flex items-center justify-center">
-                    <ShoppingBag className="w-7 h-7 text-white" />
-                  </div>
-                </div>
-              </div>
-            )}
+
             {filtered.map((order) => (
               <OrderCard key={order._id} order={order} />
             ))}
