@@ -301,7 +301,7 @@ export default function CheckoutPage() {
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-bold text-slate-500">Total Pembayaran</span>
-                <span className="text-2xl font-black text-[#114C2A]">Rp{formatRupiah(totalPrice)}</span>
+                <span className="text-2xl font-black text-slate-900">Rp{formatRupiah(totalPrice)}</span>
               </div>
               {paymentOption === 'dp' && canUseDp && (
                 <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-4 space-y-1.5 text-sm">

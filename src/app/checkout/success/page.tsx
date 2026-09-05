@@ -228,7 +228,7 @@ function CheckoutSuccessContent() {
 
               <div className="flex justify-between items-center">
                 <span className="font-bold text-slate-700">Total</span>
-                <span className="text-xl font-black text-[#114C2A]">Rp{formatRupiah(txn.total)}</span>
+                <span className="text-xl font-black text-slate-900">Rp{formatRupiah(txn.total)}</span>
               </div>
               {txn.payment_option === 'dp' && (
                 <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 space-y-1 text-sm">

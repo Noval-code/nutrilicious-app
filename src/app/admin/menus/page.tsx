@@ -657,10 +657,10 @@ export default function MenusPage() {
                           {menu.is_promo_active && menu.promo_price ? (
                             <>
                               <p className="text-[10px] font-semibold text-slate-400 line-through">Rp{Number(menu.price || 0).toLocaleString('id-ID')}</p>
-                              <p className="font-bold text-[#114C2A] text-sm">Rp{Number(menu.promo_price || 0).toLocaleString('id-ID')}</p>
+                              <p className="font-bold text-slate-900 text-sm">Rp{Number(menu.promo_price || 0).toLocaleString('id-ID')}</p>
                             </>
                           ) : (
-                            <p className="font-bold text-[#114C2A] text-sm">Rp{Number(menu.price || 0).toLocaleString('id-ID')}</p>
+                            <p className="font-bold text-slate-900 text-sm">Rp{Number(menu.price || 0).toLocaleString('id-ID')}</p>
                           )}
                           <p className={`text-[10px] font-bold ${menu.is_available === false ? 'text-red-500' : 'text-emerald-600'}`}>
                             {menu.is_available === false ? 'Tidak tersedia' : 'Bisa dipesan'}

@@ -158,7 +158,7 @@ export function CartWidget() {
                         {item.original_price && item.original_price !== item.price && (
                           <p className="text-[10px] font-semibold text-slate-400 line-through">Rp{formatPriceString(item.original_price)}</p>
                         )}
-                        <p className="font-black text-[#114C2A] text-sm">
+                        <p className="font-black text-slate-900 text-sm">
                           Rp{formatPriceString(item.price)}
                         </p>
                         {item.discount_percent ? (
@@ -176,7 +176,7 @@ export function CartWidget() {
               <div className="p-5 border-t border-gray-100 bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.04)]">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-sm font-bold text-slate-500">Total Pembayaran</span>
-                  <span className="text-xl font-black text-[#114C2A]">
+                  <span className="text-xl font-black text-slate-900">
                     Rp{formatRupiah(totalPrice)}
                   </span>
                 </div>

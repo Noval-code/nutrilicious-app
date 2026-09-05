@@ -141,7 +141,7 @@ function MenuCard({
 
         <div className="mb-4">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <p className="text-2xl font-black leading-tight tracking-tight text-[#006B3F]">Rp {formatRupiah(pricing.finalPrice)}</p>
+            <p className="text-2xl font-black leading-tight tracking-tight text-slate-900">Rp {formatRupiah(pricing.finalPrice)}</p>
             {hasDiscount && (
               <p className="text-sm font-semibold text-slate-500 line-through decoration-red-500 decoration-2">Rp {formatRupiah(pricing.originalPrice)}</p>
             )}

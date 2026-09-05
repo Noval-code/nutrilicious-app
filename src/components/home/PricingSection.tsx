@@ -270,8 +270,8 @@ export function PricingSection() {
                                                         </div>
                                                     )}
                                                     <div className="flex items-baseline gap-1">
-                                                        <span className="text-sm md:text-base font-bold text-[#114C2A]">Rp</span>
-                                                        <span className="text-3xl md:text-4xl font-black text-[#114C2A] tracking-tighter">{formatPriceDisplay(getPackageFinalPrice(pricing))}</span>
+                                                        <span className="text-sm md:text-base font-bold text-slate-900">Rp</span>
+                                                        <span className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter">{formatPriceDisplay(getPackageFinalPrice(pricing))}</span>
                                                     </div>
                                                     {hasPackagePromo(pricing) && (
                                                         <div className="text-xs font-black text-[#F9A826] mt-1">
