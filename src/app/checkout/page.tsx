@@ -145,38 +145,6 @@ export default function CheckoutPage() {
         setIsLoading(false);
       }
     }
-        }),
-      });
-
-      if (checkoutRes.ok) {
-        const txnData = await checkoutRes.json();
-
-        // Jika ada Xendit invoice URL, redirect ke halaman pembayaran Xendit
-        toast.success("Pesanan berhasil dibuat. Mengarahkan ke pembayaran...");
-
-        if (txnData.xendit_invoice_url) {
-          // Set redirecting DULU agar UI tidak flash "keranjang kosong"
-          setIsRedirecting(true);
-          clearCart();
-          window.location.href = txnData.xendit_invoice_url;
-        } else {
-          clearCart();
-          toast.success("Pesanan berhasil dibuat.");
-          // Fallback jika Xendit belum dikonfigurasi
-          router.push(`/checkout/success?order_id=${txnData.order_id}`);
-        }
-      } else {
-        const errData = await checkoutRes.json();
-        toast.error(errData.error || "Gagal membuat pesanan.");
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error("Terjadi kesalahan saat memproses pesanan.");
-    } finally {
-      if (!isRedirecting) {
-        setIsLoading(false);
-      }
-    }
   };
 
   // Tampilkan layar loading saat sedang redirect ke Xendit
