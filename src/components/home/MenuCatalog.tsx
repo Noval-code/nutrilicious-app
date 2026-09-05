@@ -284,7 +284,7 @@ export function MenuCatalog() {
                                                 <button
                                                     key={idx}
                                                     onClick={() => setActiveDayIdx(idx)}
-                                                    className={`relative flex-shrink-0 flex flex-col items-center px-4 py-3 rounded-2xl font-bold transition-all duration-300 min-w-[80px] ${
+                                                    className={`relative flex-shrink-0 flex items-center justify-center px-5 py-3 rounded-2xl font-bold transition-all duration-300 ${
                                                         isActive
                                                             ? 'bg-[#114C2A] text-white shadow-lg scale-105'
                                                             : hasAnyMenu
@@ -292,13 +292,7 @@ export function MenuCatalog() {
                                                                 : 'bg-gray-50 text-slate-300 border border-gray-100 cursor-not-allowed'
                                                     }`}
                                                 >
-                                                    <span className="text-xs font-medium opacity-70">Hari {day.day_number}</span>
-                                                    <span className="text-sm">{day.day_name}</span>
-                                                    {/* Indicator dots */}
-                                                    <div className="flex gap-1 mt-1.5">
-                                                        <span className={`w-1.5 h-1.5 rounded-full ${hasLunch ? (isActive ? 'bg-[#F9A826]' : 'bg-[#114C2A]') : 'bg-gray-200'}`} />
-                                                        <span className={`w-1.5 h-1.5 rounded-full ${hasDinner ? (isActive ? 'bg-purple-300' : 'bg-purple-400') : 'bg-gray-200'}`} />
-                                                    </div>
+                                                    <span className="text-sm font-bold">{day.day_name}</span>
                                                 </button>
                                             );
                                         })}
