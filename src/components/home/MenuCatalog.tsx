@@ -364,27 +364,27 @@ export function MenuCatalog() {
                                                     {(slot.menu.calories !== undefined || slot.menu.protein !== undefined) && (
                                                         <div className="flex flex-wrap gap-1.5 mb-3 z-10 relative text-[11px] font-bold">
                                                             {slot.menu.calories ? (
-                                                                <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-lg flex items-center gap-0.5">
+                                                                <span className="bg-slate-100 text-slate-700 border border-slate-200/60 px-2 py-0.5 rounded-lg flex items-center gap-0.5">
                                                                     🔥 {slot.menu.calories} kcal
                                                                 </span>
                                                             ) : null}
                                                             {slot.menu.protein ? (
-                                                                <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg">
+                                                                <span className="bg-slate-100 text-slate-700 border border-slate-200/60 px-2 py-0.5 rounded-lg">
                                                                     Protein: {slot.menu.protein}g
                                                                 </span>
                                                             ) : null}
                                                             {slot.menu.carbs ? (
-                                                                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg">
+                                                                <span className="bg-slate-100 text-slate-700 border border-slate-200/60 px-2 py-0.5 rounded-lg">
                                                                     Karbo: {slot.menu.carbs}g
                                                                 </span>
                                                             ) : null}
                                                             {slot.menu.fat ? (
-                                                                <span className="bg-pink-50 text-pink-700 px-2 py-0.5 rounded-lg">
+                                                                <span className="bg-slate-100 text-slate-700 border border-slate-200/60 px-2 py-0.5 rounded-lg">
                                                                     Lemak: {slot.menu.fat}g
                                                                 </span>
                                                             ) : null}
                                                             {slot.menu.sugar ? (
-                                                                <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-lg">
+                                                                <span className="bg-slate-100 text-slate-700 border border-slate-200/60 px-2 py-0.5 rounded-lg">
                                                                     Gula: {slot.menu.sugar}g
                                                                 </span>
                                                             ) : null}

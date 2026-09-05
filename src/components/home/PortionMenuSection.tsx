@@ -132,11 +132,11 @@ function MenuCard({
         </div>
 
         <div className="flex flex-wrap gap-1.5 mb-4 text-[11px] font-bold">
-          {menu.calories ? <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-lg">{menu.calories} kcal</span> : null}
-          {menu.protein ? <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg">Protein {menu.protein}g</span> : null}
-          {menu.carbs ? <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg">Karbo {menu.carbs}g</span> : null}
-          {menu.fat ? <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded-lg">Lemak {menu.fat}g</span> : null}
-          {menu.sugar ? <span className="bg-pink-50 text-pink-700 px-2 py-0.5 rounded-lg">Gula {menu.sugar}g</span> : null}
+          {menu.calories ? <span className="bg-slate-100 text-slate-700 border border-slate-200/60 px-2 py-0.5 rounded-lg">{menu.calories} kcal</span> : null}
+          {menu.protein ? <span className="bg-slate-100 text-slate-700 border border-slate-200/60 px-2 py-0.5 rounded-lg">Protein {menu.protein}g</span> : null}
+          {menu.carbs ? <span className="bg-slate-100 text-slate-700 border border-slate-200/60 px-2 py-0.5 rounded-lg">Karbo {menu.carbs}g</span> : null}
+          {menu.fat ? <span className="bg-slate-100 text-slate-700 border border-slate-200/60 px-2 py-0.5 rounded-lg">Lemak {menu.fat}g</span> : null}
+          {menu.sugar ? <span className="bg-slate-100 text-slate-700 border border-slate-200/60 px-2 py-0.5 rounded-lg">Gula {menu.sugar}g</span> : null}
         </div>
 
         <div className="mb-4">

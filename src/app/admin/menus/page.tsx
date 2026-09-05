@@ -612,19 +612,19 @@ export default function MenusPage() {
                     <td className="p-4">
                       <p className="font-bold text-slate-800">{menu.title}</p>
                       <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[11px] font-semibold">
-                        <span className="inline-flex items-center gap-0.5 bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md">
+                        <span className="inline-flex items-center gap-0.5 bg-slate-100 text-slate-600 border border-slate-200/60 px-1.5 py-0.5 rounded-md">
                           {menu.calories || 0} kcal
                         </span>
-                        <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md">
+                        <span className="bg-slate-100 text-slate-600 border border-slate-200/60 px-1.5 py-0.5 rounded-md">
                           P: {menu.protein || 0}g
                         </span>
-                        <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-md">
+                        <span className="bg-slate-100 text-slate-600 border border-slate-200/60 px-1.5 py-0.5 rounded-md">
                           K: {menu.carbs || 0}g
                         </span>
-                        <span className="bg-pink-50 text-pink-700 px-1.5 py-0.5 rounded-md">
+                        <span className="bg-slate-100 text-slate-600 border border-slate-200/60 px-1.5 py-0.5 rounded-md">
                           L: {menu.fat || 0}g
                         </span>
-                        <span className="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-md">
+                        <span className="bg-slate-100 text-slate-600 border border-slate-200/60 px-1.5 py-0.5 rounded-md">
                           G: {menu.sugar || 0}g
                         </span>
                       </div>

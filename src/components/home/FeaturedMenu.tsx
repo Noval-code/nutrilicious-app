@@ -65,8 +65,8 @@ export function FeaturedMenu() {
               <CardContent className="p-5 pt-0">
                 <div className="flex items-center justify-between text-sm text-foreground/80 font-medium">
                   <div className="flex items-center gap-1.5">
-                    <span className="bg-orange-100 text-orange-700 px-2 flex items-center h-6 rounded text-xs">{menu.calories}</span>
-                    <span className="bg-blue-100 text-blue-700 px-2 flex items-center h-6 rounded text-xs">Protein: {menu.protein}</span>
+                    <span className="bg-slate-100 text-slate-700 border border-slate-200/60 px-2 flex items-center h-6 rounded text-xs font-semibold">{menu.calories}</span>
+                    <span className="bg-slate-100 text-slate-700 border border-slate-200/60 px-2 flex items-center h-6 rounded text-xs font-semibold">Protein: {menu.protein}</span>
                   </div>
                 </div>
               </CardContent>
