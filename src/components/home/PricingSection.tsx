@@ -261,7 +261,7 @@ export function PricingSection() {
                                                 
                                                 <div className="relative z-10">
                                                     {hasPackagePromo(pricing) && (
-                                                        <div className="text-xs text-slate-400 font-semibold line-through mb-1">
+                                                        <div className="text-xs text-red-500 font-semibold line-through decoration-red-500 mb-1">
                                                             Rp{formatPriceDisplay(pricing.normal)}
                                                         </div>
                                                     )}

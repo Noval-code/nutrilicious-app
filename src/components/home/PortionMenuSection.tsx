@@ -353,7 +353,7 @@ export function PortionMenuSection() {
               <div id="menu-acara" className="space-y-6 bg-slate-50 border border-gray-100 rounded-[32px] p-5 md:p-8">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
                   <div>
-                    <h3 className="text-2xl md:text-3xl font-black text-[#114C2A] flex items-center gap-2"><Users className="w-7 h-7 text-[#F9A826]" /> Menu Acara & Borongan</h3>
+                    <h3 className="text-2xl md:text-3xl font-black text-[#114C2A]">Menu Acara & Borongan</h3>
                     <p className="text-slate-500 text-sm md:text-base mt-1">Untuk pesanan jumlah besar dengan tanggal acara dan diskon bertingkat.</p>
                   </div>
                 </div>
