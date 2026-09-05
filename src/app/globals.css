@@ -17,9 +17,9 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-brand-primary: #114C2A;
-  --color-brand-primary-hover: #1a663a;
-  --color-brand-primary-soft: #f2f6f4;
+  --color-brand-primary: #005D33;
+  --color-brand-primary-hover: #004d2a;
+  --color-brand-primary-soft: #e6f5ed;
   --color-brand-secondary: #F9A826;
   --color-brand-secondary-hover: #e5971d;
   --color-brand-secondary-soft: #fff8eb;

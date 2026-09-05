@@ -144,7 +144,7 @@ export function PricingSection() {
                 
                 {/* Header Title */}
                 <div className="text-center mb-12 md:mb-16">
-                    <h2 className="text-[#114C2A] font-bold tracking-widest text-xs md:text-sm uppercase mb-3">
+                    <h2 className="text-[#005D33] font-bold tracking-widest text-xs md:text-sm uppercase mb-3">
                         Pilihan Cerdas
                     </h2>
                     <h1 className="text-4xl md:text-5xl font-extrabold text-slate-800 tracking-tight">
@@ -171,7 +171,7 @@ export function PricingSection() {
                                           onClick={() => setSelectedDay(day)}
                                           className={`group relative flex-shrink-0 flex items-center px-4 py-3 rounded-2xl font-bold transition-all text-left w-auto lg:w-full border
                                             ${selectedDay === day 
-                                                ? 'bg-[#114C2A] text-white shadow-md border-[#114C2A] lg:scale-[1.02] z-10' 
+                                                ? 'bg-[#005D33] text-white shadow-md border-[#005D33] lg:scale-[1.02] z-10' 
                                                 : 'bg-white text-slate-500 hover:bg-gray-50 border-gray-100'
                                             }`}
                                       >   
@@ -199,7 +199,7 @@ export function PricingSection() {
                                         onClick={() => setSelectedMeal(meal)}
                                         className={`flex-shrink-0 px-6 py-3 rounded-[16px] font-bold text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap
                                             ${selectedMeal === meal 
-                                                ? 'bg-[#F9A826] text-[#114C2A] shadow-sm' 
+                                                ? 'bg-[#F9A826] text-[#005D33] shadow-sm' 
                                                 : 'bg-transparent text-slate-500 hover:bg-gray-50'
                                             }`}
                                     >
@@ -257,7 +257,7 @@ export function PricingSection() {
 
                                             <div className="bg-[#fcfdfc] rounded-2xl p-5 mb-6 border border-gray-100 group-hover:border-[#d4e1d8] transition-colors relative overflow-hidden">
                                                 {/* Decorative element background */}
-                                                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#114C2A]/5 to-[#F9A826]/10 rounded-bl-full -mr-4 -mt-4 opacity-50 z-0"/>
+                                                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#005D33]/5 to-[#F9A826]/10 rounded-bl-full -mr-4 -mt-4 opacity-50 z-0"/>
                                                 
                                                 <div className="relative z-10">
                                                     {hasPackagePromo(pricing) && (
@@ -282,7 +282,7 @@ export function PricingSection() {
                                                 className={`w-full py-3.5 rounded-xl font-bold shadow-md transition-all duration-300 transform group-hover:-translate-y-1 flex items-center justify-center gap-2
                                                     ${justAdded 
                                                         ? 'bg-emerald-500 text-white hover:shadow-lg' 
-                                                        : 'bg-slate-900 text-white hover:bg-[#114C2A] hover:shadow-lg'
+                                                        : 'bg-slate-900 text-white hover:bg-[#005D33] hover:shadow-lg'
                                                     }`}
                                             >
                                                 {justAdded ? (

@@ -59,7 +59,7 @@ export function UserDropdown() {
         id="user-menu-trigger"
       >
         {/* Avatar */}
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#114C2A] to-[#1a663a] flex items-center justify-center text-white font-bold text-sm ring-2 ring-[#114C2A]/10 group-hover:ring-[#114C2A]/30 transition-all">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#005D33] to-[#004d2a] flex items-center justify-center text-white font-bold text-sm ring-2 ring-[#005D33]/10 group-hover:ring-[#005D33]/30 transition-all">
           {initials}
         </div>
         <div className="hidden sm:block text-left">
@@ -77,7 +77,7 @@ export function UserDropdown() {
       {isOpen && (
         <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
           {/* User Header */}
-          <div className="p-4 bg-gradient-to-r from-[#114C2A] to-[#1a663a] text-white">
+          <div className="p-4 bg-gradient-to-r from-[#005D33] to-[#004d2a] text-white">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center text-white font-black text-lg">
                 {initials}
@@ -98,9 +98,9 @@ export function UserDropdown() {
                   key={idx}
                   href={item.href}
                   onClick={() => setIsOpen(false)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-[#f2f6f4] transition-colors group"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-[#e6f5ed] transition-colors group"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-[#e2eae4] flex items-center justify-center text-slate-400 group-hover:text-[#114C2A] transition-colors">
+                  <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-[#d6ebd8] flex items-center justify-center text-slate-400 group-hover:text-[#005D33] transition-colors">
                     <Icon className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">

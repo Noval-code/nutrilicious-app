@@ -54,9 +54,9 @@ const getCategoryIcon = (catKey: string) => {
 };
 
 const getCategoryColor = (catKey: string, index: number) => {
-    const colors = ['#114C2A', '#5B21B6', '#D97706', '#2563EB', '#DB2777'];
+    const colors = ['#005D33', '#5B21B6', '#D97706', '#2563EB', '#DB2777'];
     const key = catKey.toLowerCase();
-    if (key.includes('lunch')) return '#114C2A';
+    if (key.includes('lunch')) return '#005D33';
     if (key.includes('dinner')) return '#5B21B6';
     return colors[index % colors.length];
 };
@@ -105,7 +105,7 @@ const buildDayMenus = (day?: ScheduleDay, pkg?: PackageData): { label: string; i
 
     const result: { label: string; icon: React.ReactNode; color: string; menu?: MenuDetail }[] = [];
     if (configuredSlugs.has('lunch') && (day.lunch_menu || day.lunch_menu_id)) {
-        result.push({ label: 'LUNCH', icon: <Utensils className="w-4 h-4" />, color: '#114C2A', menu: day.lunch_menu });
+        result.push({ label: 'LUNCH', icon: <Utensils className="w-4 h-4" />, color: '#005D33', menu: day.lunch_menu });
     }
     if (configuredSlugs.has('dinner') && (day.dinner_menu || day.dinner_menu_id)) {
         result.push({ label: 'DINNER', icon: <Moon className="w-4 h-4" />, color: '#5B21B6', menu: day.dinner_menu });
@@ -189,16 +189,16 @@ export function MenuCatalog() {
             {/* Background Decorations */}
             <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-[#f2f6f4] to-transparent z-0"></div>
             <div className="absolute -left-32 top-32 w-80 h-80 bg-[#F9A826]/10 rounded-full blur-[80px] z-0"></div>
-            <div className="absolute -right-32 top-96 w-96 h-96 bg-[#114C2A]/5 rounded-full blur-[100px] z-0"></div>
+            <div className="absolute -right-32 top-96 w-96 h-96 bg-[#005D33]/5 rounded-full blur-[100px] z-0"></div>
 
             <div className="container relative mx-auto px-4 md:px-6 z-10">
                 {/* Section Header */}
                 <div className="text-center mb-16 max-w-3xl mx-auto">
-                    <span className="inline-flex items-center gap-2 bg-[#114C2A]/10 text-[#114C2A] px-4 py-1.5 rounded-full text-sm font-bold tracking-wide mb-4 uppercase">
+                    <span className="inline-flex items-center gap-2 bg-[#005D33]/10 text-[#005D33] px-4 py-1.5 rounded-full text-sm font-bold tracking-wide mb-4 uppercase">
                         <Sparkles className="w-4 h-4" /> Pilihan Menu Kami
                     </span>
                     <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-800 tracking-tight leading-tight">
-                        Eksplorasi Rasa <span className="text-[#114C2A]">Setiap Hari</span>
+                        Eksplorasi Rasa <span className="text-[#005D33]">Setiap Hari</span>
                     </h2>
                     <p className="mt-5 text-slate-500 text-lg">
                         Lihat jadwal menu harian dari setiap paket berlangganan kami. Disusun oleh chef dan ahli gizi untuk memastikan variasi rasa yang tidak pernah membosankan.
@@ -223,7 +223,7 @@ export function MenuCatalog() {
                 {/* Loading State */}
                 {loading && (
                     <div className="flex flex-col items-center justify-center py-20 gap-4">
-                        <Loader2 className="w-10 h-10 text-[#114C2A] animate-spin" />
+                        <Loader2 className="w-10 h-10 text-[#005D33] animate-spin" />
                         <p className="text-slate-500 font-medium">Memuat jadwal menu...</p>
                     </div>
                 )}
@@ -241,7 +241,7 @@ export function MenuCatalog() {
                                         onClick={() => setActivePackageIdx(idx)}
                                         className={`flex items-center gap-2.5 px-7 py-4 rounded-2xl font-bold transition-all duration-300 ${
                                             isActive
-                                                ? 'bg-[#114C2A] text-white shadow-[0_8px_20px_rgba(17,76,42,0.3)] scale-105'
+                                                ? 'bg-[#005D33] text-white shadow-[0_8px_20px_rgba(0,93,51,0.3)] scale-105'
                                                 : 'bg-white text-slate-600 border border-gray-100 hover:bg-gray-50 hover:border-gray-200'
                                         }`}
                                     >
@@ -268,7 +268,7 @@ export function MenuCatalog() {
                                     <button
                                         onClick={goToPrevDay}
                                         disabled={activeDayIdx === 0}
-                                        className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-slate-400 hover:text-[#114C2A] hover:border-[#114C2A]/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                        className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-slate-400 hover:text-[#005D33] hover:border-[#005D33]/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                                     >
                                         <ChevronLeft className="w-5 h-5" />
                                     </button>
@@ -286,7 +286,7 @@ export function MenuCatalog() {
                                                     onClick={() => setActiveDayIdx(idx)}
                                                     className={`relative flex-shrink-0 flex items-center justify-center px-5 py-3 rounded-2xl font-bold transition-all duration-300 ${
                                                         isActive
-                                                            ? 'bg-[#114C2A] text-white shadow-lg scale-105'
+                                                            ? 'bg-[#005D33] text-white shadow-lg scale-105'
                                                             : hasAnyMenu
                                                                 ? 'bg-white text-slate-600 border border-gray-100 hover:bg-gray-50'
                                                                 : 'bg-gray-50 text-slate-300 border border-gray-100 cursor-not-allowed'
@@ -301,7 +301,7 @@ export function MenuCatalog() {
                                     <button
                                         onClick={goToNextDay}
                                         disabled={activeDayIdx === days.length - 1}
-                                        className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-slate-400 hover:text-[#114C2A] hover:border-[#114C2A]/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                        className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-slate-400 hover:text-[#005D33] hover:border-[#005D33]/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                                     >
                                         <ChevronRight className="w-5 h-5" />
                                     </button>
@@ -319,7 +319,7 @@ export function MenuCatalog() {
                                             }`}
                                         >
                                             {/* Card Accent */}
-                                            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#114C2A]/5 to-[#F9A826]/10 rounded-bl-full -mr-4 -mt-4 opacity-50 z-0" />
+                                            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#005D33]/5 to-[#F9A826]/10 rounded-bl-full -mr-4 -mt-4 opacity-50 z-0" />
 
                                             {/* Category Label */}
                                             <div className="flex items-center gap-2 mb-4 z-10 relative">

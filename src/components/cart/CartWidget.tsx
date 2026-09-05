@@ -22,12 +22,12 @@ export function CartWidget() {
       <button
         id="cart-widget-button"
         onClick={() => setIsCartOpen(true)}
-        className="fixed bottom-6 right-24 z-40 w-14 h-14 bg-[#114C2A] text-white rounded-full shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 flex items-center justify-center group"
+        className="fixed bottom-6 right-24 z-40 w-14 h-14 bg-[#005D33] text-white rounded-full shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 flex items-center justify-center group"
         aria-label="Buka keranjang"
       >
         <ShoppingCart className="w-6 h-6 group-hover:rotate-12 transition-transform" />
         {totalItems > 0 && (
-          <span className="absolute -top-1 -right-1 w-6 h-6 bg-[#F9A826] text-[#114C2A] text-xs font-black rounded-full flex items-center justify-center shadow-md animate-bounce">
+          <span className="absolute -top-1 -right-1 w-6 h-6 bg-[#F9A826] text-[#005D33] text-xs font-black rounded-full flex items-center justify-center shadow-md animate-bounce">
             {totalItems}
           </span>
         )}
@@ -45,7 +45,7 @@ export function CartWidget() {
           {/* Panel */}
           <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
             {/* Header */}
-            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-[#114C2A] to-[#1a663a]">
+            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-[#005D33] to-[#004d2a]">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm">
@@ -69,12 +69,12 @@ export function CartWidget() {
             {userAddress && userAddress.address && (
               <div className="px-4 py-2.5 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <MapPin className="w-3.5 h-3.5 text-[#114C2A] shrink-0" />
+                  <MapPin className="w-3.5 h-3.5 text-[#005D33] shrink-0" />
                   <p className="text-xs text-slate-600 truncate">{userAddress.address}</p>
                 </div>
                 <button
                   onClick={openAddressModal}
-                  className="text-[10px] font-semibold text-[#114C2A] hover:underline flex items-center gap-0.5 shrink-0"
+                  className="text-[10px] font-semibold text-[#005D33] hover:underline flex items-center gap-0.5 shrink-0"
                 >
                   <Edit3 className="w-2.5 h-2.5" /> Ubah
                 </button>
@@ -105,7 +105,7 @@ export function CartWidget() {
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {item.type === 'menu' ? (
                             <>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#f2f6f4] text-[#114C2A] text-[10px] font-bold">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#e6f5ed] text-[#005D33] text-[10px] font-bold">
                                 {item.category || 'Menu'}
                               </span>
                               <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] font-bold">
@@ -119,7 +119,7 @@ export function CartWidget() {
                             </>
                           ) : (
                             <>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#f2f6f4] text-[#114C2A] text-[10px] font-bold">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#e6f5ed] text-[#005D33] text-[10px] font-bold">
                                 {item.duration}
                               </span>
                               <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] font-bold">
@@ -142,14 +142,14 @@ export function CartWidget() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-slate-500 hover:border-[#114C2A] hover:text-[#114C2A] transition-colors"
+                          className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-slate-500 hover:border-[#005D33] hover:text-[#005D33] transition-colors"
                         >
                           <Minus className="w-3.5 h-3.5" />
                         </button>
                         <span className="w-8 text-center font-black text-slate-700 text-sm">{item.quantity}</span>
                         <button
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-slate-500 hover:border-[#114C2A] hover:text-[#114C2A] transition-colors"
+                          className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-slate-500 hover:border-[#005D33] hover:text-[#005D33] transition-colors"
                         >
                           <Plus className="w-3.5 h-3.5" />
                         </button>
@@ -183,7 +183,7 @@ export function CartWidget() {
                 <Link
                   href="/checkout"
                   onClick={() => setIsCartOpen(false)}
-                  className="flex items-center justify-center gap-2 w-full py-3.5 bg-[#114C2A] text-white rounded-xl font-bold shadow-lg hover:bg-[#1a663a] hover:shadow-xl transition-all duration-300 group"
+                  className="flex items-center justify-center gap-2 w-full py-3.5 bg-[#005D33] text-white rounded-xl font-bold shadow-lg hover:bg-[#004d2a] hover:shadow-xl transition-all duration-300 group"
                 >
                   Checkout Sekarang
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

@@ -163,7 +163,7 @@ export function AddressModal({ isOpen, onClose, onSaved, initialData }: AddressM
       {/* Modal */}
       <div className="relative w-full max-w-lg mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-[#114C2A] to-[#1a663a] flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 bg-gradient-to-r from-[#005D33] to-[#004d2a] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
               <MapPin className="w-5 h-5 text-[#F9A826]" />
@@ -186,7 +186,7 @@ export function AddressModal({ isOpen, onClose, onSaved, initialData }: AddressM
               <label className="block text-sm font-semibold text-slate-700 mb-1">Nama Penerima</label>
               <input
                 required
-                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#114C2A]/30 focus:border-[#114C2A] outline-none transition-all"
+                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#005D33]/30 focus:border-[#005D33] outline-none transition-all"
                 placeholder="Nama lengkap penerima"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -203,7 +203,7 @@ export function AddressModal({ isOpen, onClose, onSaved, initialData }: AddressM
                 className={`w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 outline-none transition-all ${
                   phoneError && phoneTouched
                     ? "border-red-400 focus:ring-red-200 focus:border-red-400"
-                    : "border-slate-200 focus:ring-[#114C2A]/30 focus:border-[#114C2A]"
+                    : "border-slate-200 focus:ring-[#005D33]/30 focus:border-[#005D33]"
                 }`}
                 placeholder="0812-xxxx-xxxx"
                 value={formData.phone}
@@ -227,7 +227,7 @@ export function AddressModal({ isOpen, onClose, onSaved, initialData }: AddressM
               <textarea
                 required
                 rows={2}
-                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#114C2A]/30 focus:border-[#114C2A] outline-none transition-all resize-none"
+                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#005D33]/30 focus:border-[#005D33] outline-none transition-all resize-none"
                 placeholder="Jalan, RT/RW, Kelurahan, Kecamatan, Kota"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
@@ -242,7 +242,7 @@ export function AddressModal({ isOpen, onClose, onSaved, initialData }: AddressM
                   type="button"
                   onClick={handleDetectLocation}
                   disabled={isLocating}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-[#114C2A] hover:text-[#1a663a] transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-[#005D33] hover:text-[#004d2a] transition-colors disabled:opacity-50"
                 >
                   {isLocating ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -275,7 +275,7 @@ export function AddressModal({ isOpen, onClose, onSaved, initialData }: AddressM
             <button
               type="submit"
               disabled={isSaving}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-[#114C2A] text-white rounded-xl font-bold shadow-lg hover:bg-[#1a663a] hover:shadow-xl transition-all disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-2 py-3 bg-[#005D33] text-white rounded-xl font-bold shadow-lg hover:bg-[#004d2a] hover:shadow-xl transition-all disabled:opacity-60"
             >
               {isSaving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
