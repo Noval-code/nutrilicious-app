@@ -329,7 +329,7 @@ function OrderCard({ order }: { order: Order }) {
                 {/* Progress Line */}
                 <div className="absolute top-4 left-5 right-5 h-0.5 bg-slate-200 z-0" />
                 <div
-                  className="absolute top-4 left-5 h-0.5 bg-[#114C2A] z-0 transition-all duration-500"
+                  className="absolute top-4 left-5 h-0.5 bg-[#005D33] z-0 transition-all duration-500"
                   style={{ width: `${Math.max(0, (currentStep / (steps.length - 1)) * (100 - 10))}%` }}
                 />
 
@@ -342,13 +342,13 @@ function OrderCard({ order }: { order: Order }) {
                       <div
                         className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
                           isDone
-                            ? "bg-[#114C2A] text-white shadow-sm"
+                            ? "bg-[#005D33] text-white shadow-sm"
                             : "bg-white border-2 border-slate-200 text-slate-300"
                         }`}
                       >
                         <StepIcon className="w-3.5 h-3.5" />
                       </div>
-                      <span className={`text-[10px] font-bold ${isDone ? "text-[#114C2A]" : "text-slate-300"}`}>
+                      <span className={`text-[10px] font-bold ${isDone ? "text-[#005D33]" : "text-slate-300"}`}>
                         {stepCfg.label.split(" ")[0]}
                       </span>
                     </div>
@@ -401,7 +401,7 @@ function OrderCard({ order }: { order: Order }) {
                 href={order.xendit_invoice_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3 bg-[#114C2A] text-white rounded-xl font-bold shadow-md hover:bg-[#1a663a] hover:shadow-lg transition-all"
+                className="flex items-center justify-center gap-2 w-full py-3 bg-[#005D33] text-white rounded-xl font-bold shadow-md hover:bg-[#007a44] hover:shadow-lg transition-all"
               >
                 <CreditCard className="w-4 h-4" />
                 Bayar Sekarang
@@ -455,7 +455,7 @@ function OrderCard({ order }: { order: Order }) {
                         <button
                           onClick={() => confirmReceived(log)}
                           disabled={confirmingId === log._id}
-                          className="px-3 py-2 bg-[#114C2A] text-white rounded-lg text-xs font-bold disabled:opacity-50"
+                          className="px-3 py-2 bg-[#005D33] text-white rounded-lg text-xs font-bold disabled:opacity-50"
                         >
                           {confirmingId === log._id ? 'Memproses...' : 'Konfirmasi Diterima'}
                         </button>
@@ -476,14 +476,14 @@ function OrderCard({ order }: { order: Order }) {
                                 <div className="min-w-0">
                                   <p className="text-xs font-bold text-slate-700 truncate">
                                     {currentTitle}
-                                    {customMenu && <span className="ml-1 text-[#114C2A]">(Custom)</span>}
+                                    {customMenu && <span className="ml-1 text-[#005D33]">(Custom)</span>}
                                   </p>
                                   {customMenu?.original_menu_title && <p className="text-[10px] text-slate-400">Default: {customMenu.original_menu_title}</p>}
                                 </div>
                                 {log.status === 'pending' && (
                                   <button
                                     onClick={() => openMenuChange(log, slot)}
-                                    className="bg-white border border-[#114C2A]/20 text-[#114C2A] rounded-lg px-3 py-1.5 text-xs font-bold hover:bg-[#f2f6f4] transition-colors"
+                                    className="bg-white border border-[#005D33]/20 text-[#005D33] rounded-lg px-3 py-1.5 text-xs font-bold hover:bg-[#f0f7f4] transition-colors"
                                   >
                                     Ganti Menu
                                   </button>
@@ -496,7 +496,7 @@ function OrderCard({ order }: { order: Order }) {
                       {(log.delivery_proof_url || log.delivery_note) && (
                         <div className="border-t border-white pt-2 text-xs space-y-1">
                           {log.delivery_proof_url && (
-                            <a href={log.delivery_proof_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-[#114C2A] hover:underline">
+                            <a href={log.delivery_proof_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-[#005D33] hover:underline">
                               <ExternalLink className="w-3 h-3" /> Lihat Bukti Pengiriman
                             </a>
                           )}
@@ -553,7 +553,7 @@ function OrderCard({ order }: { order: Order }) {
                   <button
                     onClick={() => requestMenuChange(menuChangeTarget.log, menuChangeTarget.slot, selectedMenuId)}
                     disabled={!selectedMenuId || changingMenuKey === `${menuChangeTarget.log._id}-${menuChangeTarget.slot}`}
-                    className="flex-1 py-2.5 rounded-xl bg-[#114C2A] text-white font-bold text-sm disabled:opacity-50"
+                    className="flex-1 py-2.5 rounded-xl bg-[#005D33] text-white font-bold text-sm disabled:opacity-50"
                   >
                     {changingMenuKey === `${menuChangeTarget.log._id}-${menuChangeTarget.slot}` ? 'Menyimpan...' : 'Simpan Perubahan'}
                   </button>
@@ -573,7 +573,7 @@ function OrderCard({ order }: { order: Order }) {
             </div>
             <div className="text-right">
               <span className="text-xs text-slate-400 font-medium">Total: </span>
-              <span className="font-black text-[#114C2A]">{formatCurrency(order.total)}</span>
+              <span className="font-black text-[#005D33]">{formatCurrency(order.total)}</span>
             </div>
           </div>
 
@@ -640,13 +640,13 @@ export default function MyOrdersPage() {
         {/* Back */}
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-[#114C2A] transition-colors mb-6"
+          className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-[#005D33] transition-colors mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
           Kembali ke Beranda
         </Link>
 
-        <h1 className="text-3xl font-extrabold text-[#114C2A] mb-2">Pesanan Saya</h1>
+        <h1 className="text-3xl font-extrabold text-[#005D33] mb-2">Pesanan Saya</h1>
         <p className="text-slate-500 text-sm mb-8">
           Pantau status dan riwayat seluruh pesanan Anda.
         </p>
@@ -659,8 +659,8 @@ export default function MyOrdersPage() {
               onClick={() => setFilterStatus(f.key)}
               className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
                 filterStatus === f.key
-                  ? "bg-[#114C2A] text-white shadow-md"
-                  : "bg-white text-slate-500 border border-slate-200 hover:border-[#114C2A] hover:text-[#114C2A]"
+                  ? "bg-[#005D33] text-white shadow-md"
+                  : "bg-white text-slate-500 border border-slate-200 hover:border-[#005D33] hover:text-[#005D33]"
               }`}
             >
               {f.label}
@@ -693,7 +693,7 @@ export default function MyOrdersPage() {
             {filterStatus === "all" && (
               <Link
                 href="/"
-                className="mt-4 bg-[#114C2A] text-white px-5 py-2.5 rounded-xl font-bold hover:bg-[#1a663a] transition-colors shadow-md inline-flex items-center gap-2"
+                className="mt-4 bg-[#005D33] text-white px-5 py-2.5 rounded-xl font-bold hover:bg-[#007a44] transition-colors shadow-md inline-flex items-center gap-2"
               >
                 <ShoppingBag className="w-4 h-4" /> Lihat Menu
               </Link>
@@ -701,6 +701,23 @@ export default function MyOrdersPage() {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Total Pengeluaran Summary */}
+            {filterStatus === "all" && orders.length > 0 && (
+              <div className="bg-gradient-to-r from-[#005D33] to-[#007a44] rounded-2xl p-5 text-white shadow-lg mb-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-white/70 uppercase tracking-wider mb-1">Total Pengeluaran</p>
+                    <p className="text-2xl font-black tracking-tight">
+                      {formatCurrency(orders.reduce((sum, o) => sum + (o.total || 0), 0))}
+                    </p>
+                    <p className="text-xs text-white/60 mt-1">{orders.length} pesanan · semua status</p>
+                  </div>
+                  <div className="w-14 h-14 bg-white/15 rounded-2xl flex items-center justify-center">
+                    <ShoppingBag className="w-7 h-7 text-white" />
+                  </div>
+                </div>
+              </div>
+            )}
             {filtered.map((order) => (
               <OrderCard key={order._id} order={order} />
             ))}
